@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/daily_6_backend" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/daily6-mobile" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/daily6-mobile/.expo" />
+      <excludeFolder url="file://$MODULE_DIR$/legacy" />
+    </content>
+    <orderEntry type="jdk" jdkName="Python 3.13 virtualenv at C:\Workspace\Coding\Python\03_Experiments\power_6_journal\.venv" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
