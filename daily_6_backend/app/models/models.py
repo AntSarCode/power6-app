@@ -18,16 +18,17 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    priority = Column(Integer, nullable=False)
-    status = Column(Enum(TaskStatus), default=TaskStatus.pending)
+
+    # Rename & align with frontend
+    text = Column(String, nullable=False)
+    rank = Column(Integer, nullable=False)
+    completed = Column(Integer, default=0)  # 0 = False, 1 = True
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="tasks")
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created = Column(String, nullable=False)  # store date string like '2025-07-11'
+
 
 class User(Base):
     __tablename__ = "users"

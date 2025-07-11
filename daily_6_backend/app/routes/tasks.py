@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import date
 
 from app.models.models import Task as TaskModel, User
 from app.database import get_db
-from app.routers.auth import get_current_user
+from app.routes.auth import get_current_user
 from app.schemas.schemas import TaskCreate, Task
 
 router = APIRouter(
@@ -12,13 +13,43 @@ router = APIRouter(
     tags=["Tasks"]
 )
 
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+def upload_tasks(
+    tasks: List[TaskCreate],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    today = date.today().isoformat()
+
+    # Prevent duplicates by deleting existing tasks for today
+    db.query(TaskModel).filter(
+        TaskModel.user_id == current_user.id,
+        TaskModel.created == today
+    ).delete()
+
+    for task in tasks:
+        db_task = TaskModel(**task.model_dump(), user_id=current_user.id, created=today)
+        db.add(db_task)
+    db.commit()
+    return {"status": "success", "count": len(tasks)}
+
+
+@router.get("/today", response_model=List[Task])
+def get_today_tasks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    today = date.today().isoformat()
+    return db.query(TaskModel).filter(TaskModel.user_id == current_user.id, TaskModel.created == today).all()
+
+
 @router.post("/", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    db_task = TaskModel(**task.dict(), user_id=current_user.id)
+    db_task = TaskModel(**task.model_dump(), user_id=current_user.id)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -62,7 +93,7 @@ def update_task(
     task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    for key, value in updated_task.dict().items():
+    for key, value in updated_task.model_dump().items():
         setattr(task, key, value)
     db.commit()
     db.refresh(task)

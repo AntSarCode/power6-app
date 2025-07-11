@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Literal, Callable
-from app.routers.auth import get_current_user
+from app.routes.auth import get_current_user
 from app.models.models import User
 
 router = APIRouter(

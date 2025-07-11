@@ -5,7 +5,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.badge import UserBadgeRead, BadgeAssignResult
 from app.services import badge_service
-from app.routers.auth import get_current_user
+from app.routes.auth import get_current_user
 from app.models.models import User
 
 router = APIRouter(
