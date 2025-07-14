@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -13,7 +13,7 @@ router = APIRouter(
     tags=["Badges"]
 )
 
-@router.get("/me", response_model=List[UserBadgeRead])
+@router.get("/me", response_model=List[UserBadgeRead], status_code=status.HTTP_200_OK)
 def get_my_badges(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -24,7 +24,7 @@ def get_my_badges(
     return badge_service.get_user_badges(db, current_user.id)
 
 
-@router.post("/evaluate", response_model=BadgeAssignResult)
+@router.post("/evaluate", response_model=BadgeAssignResult, status_code=status.HTTP_200_OK)
 def evaluate_badges(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

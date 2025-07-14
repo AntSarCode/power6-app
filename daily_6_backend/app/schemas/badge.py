@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class BadgeBase(BaseModel):
     name: str
     description: str
-    icon: str
+    icon_uri: str
     unlock_condition: str
 
 
@@ -19,6 +19,13 @@ class BadgeRead(BadgeBase):
 
     class Config:
         orm_mode = True
+
+
+class BadgeUpdate(BaseModel):
+    name: Optional[str]
+    description: Optional[str]
+    icon_uri: Optional[str]
+    unlock_condition: Optional[str]
 
 
 class UserBadgeBase(BaseModel):
@@ -38,19 +45,14 @@ class UserBadgeRead(UserBadgeBase):
     class Config:
         orm_mode = True
 
-class BadgeUpdate(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    icon: Optional[str]
-    unlock_condition: Optional[str]
-
 
 class UserBadgeUpdate(BaseModel):
     unlocked_at: Optional[datetime]
     badge_id: Optional[int]
 
+
 class BadgeAssignResult(BaseModel):
-    new_badges: list[UserBadgeRead] = []
+    new_badges: List[UserBadgeRead] = []
     message: str = "Badges evaluated and assigned successfully."
 
     class Config:

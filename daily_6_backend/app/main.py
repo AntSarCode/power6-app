@@ -1,23 +1,54 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth, users, badge, tasks, tier_logic
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+from app.routes import (
+    auth_router,
+    users_router,
+    badge_router,
+    tasks_router,
+    tier_logic_router
+)
+
+from app.models.models import User, Task, Subscription
+from app.models.badge import Badge, UserBadge
+
+_ = [User, Task, Subscription, Badge, UserBadge]  # ensures models are evaluated
+
+
+from app.database import Base, engine
+Base.metadata.create_all(bind=engine)
+
+
+app = FastAPI(
+    title="Power6 API",
+    description="Backend for the Power6 productivity app",
+    version="1.0.0"
+)
 
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(badge.router)
-app.include_router(tasks.router)
-app.include_router(tier_logic.router)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include API routers
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(badge_router)
+app.include_router(tasks_router)
+app.include_router(tier_logic_router)
 
 @app.get("/")
 def read_root():
-    return {"msg": "Welcome to the Daily6 API"}
+    return {"msg": "Welcome to the Power6 API"}
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse("static/favicon.ico")

@@ -21,20 +21,20 @@ def upload_tasks(
 ):
     today = date.today().isoformat()
 
-    # Prevent duplicates by deleting existing tasks for today
     db.query(TaskModel).filter(
         TaskModel.user_id == current_user.id,
         TaskModel.created == today
-    ).delete()
+    ).delete(synchronize_session=False)
 
     for task in tasks:
         db_task = TaskModel(**task.model_dump(), user_id=current_user.id, created=today)
         db.add(db_task)
     db.commit()
+
     return {"status": "success", "count": len(tasks)}
 
 
-@router.get("/today", response_model=List[Task])
+@router.get("/today", response_model=List[Task], status_code=status.HTTP_200_OK)
 def get_today_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -56,7 +56,7 @@ def create_task(
     return db_task
 
 
-@router.get("/", response_model=List[Task])
+@router.get("/", response_model=List[Task], status_code=status.HTTP_200_OK)
 def read_tasks(
     skip: int = 0,
     limit: int = 100,
@@ -71,7 +71,8 @@ def read_tasks(
         .all()
     )
 
-@router.get("/{task_id}", response_model=Task)
+
+@router.get("/{task_id}", response_model=Task, status_code=status.HTTP_200_OK)
 def read_task(
     task_id: int,
     db: Session = Depends(get_db),
@@ -83,7 +84,7 @@ def read_task(
     return task
 
 
-@router.put("/{task_id}", response_model=Task)
+@router.put("/{task_id}", response_model=Task, status_code=status.HTTP_200_OK)
 def update_task(
     task_id: int,
     updated_task: TaskCreate,
