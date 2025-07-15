@@ -22,6 +22,9 @@ export default function Navbar() {
             <Link to="/" style={location.pathname === '/' ? activeStyle : undefined}>
                 Home
             </Link>
+            <Link to="/dashboard" style={location.pathname === '/dashboard' ? activeStyle : undefined}>
+                Dashboard
+            </Link>
             <Link to="/input" style={location.pathname === '/input' ? activeStyle : undefined}>
                 Task Input
             </Link>

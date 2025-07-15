@@ -7,7 +7,16 @@
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@components/*": ["components/*"],
+      "@pages/*": ["pages/*"],
+      "@styles/*": ["styles/*"],
+      "@context/*": ["context/*"]
+    }
   },
   "include": ["src"],
   "files": [],
@@ -16,4 +25,3 @@
     { "path": "./tsconfig.node.json" }
   ]
 }
-

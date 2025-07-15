@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
-import './styles/global.css';
+import App from './App';
+import './index.css'; // Tailwind-generated CSS
 import { UserProvider } from './context/UserContext';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
