@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from Power6Backend.app.database import get_db
-from Power6Backend.app.schemas.badge import UserBadgeRead, BadgeAssignResult
-from Power6Backend.app.services import badge_service
-from Power6Backend.app.routes.auth import get_current_user
-from Power6Backend.app.models.models import User
+from app.database import get_db
+from app.schemas.badge import UserBadgeRead, BadgeAssignResult
+from app.services import badge_service
+from app.routes.auth import get_current_user
+from app.models.models import User
 
 router = APIRouter(
     prefix="/badges",

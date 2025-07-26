@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
 
-from Power6Backend.app.models.models import Task as TaskModel, User
-from Power6Backend.app.database import get_db
-from Power6Backend.app.routes.auth import get_current_user
-from Power6Backend.app.schemas.schemas import TaskCreate, Task
+from app.models.models import Task as TaskModel, User
+from app.database import get_db
+from app.routes.auth import get_current_user
+from app.schemas.schemas import TaskCreate, Task
 
 router = APIRouter(
     prefix="/tasks",

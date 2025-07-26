@@ -1,51 +1,73 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_constants.dart';
 import '../models/task.dart';
 import 'api_response.dart';
 
 class TaskService {
-  final http.Client client;
-
-  TaskService({http.Client? httpClient}) : client = httpClient ?? http.Client();
-
-  Future<ApiResponse<List<Task>>> fetchTasks(String token) async {
+  static Future<ApiResponse<List<Task>>> fetchTodayTasks(String token) async {
     try {
-      final response = await client.get(
+      final response = await http.get(
         Uri.parse(ApiConstants.baseUrl + ApiConstants.tasks),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        final tasks = data.map((json) => Task.fromJson(json)).toList();
-        return ApiResponse(data: tasks);
+        final List data = json.decode(response.body);
+        final tasks = data.map((json) => Task.fromJson(json)).toList().cast<Task>();
+        return ApiResponse.success(tasks);
       } else {
-        return ApiResponse(error: 'Failed to fetch tasks: ${response.statusCode}');
+        return ApiResponse.failure('Failed to fetch tasks');
       }
     } catch (e) {
-      return ApiResponse(error: e.toString());
+      return ApiResponse.failure(e.toString());
     }
   }
 
-  Future<ApiResponse<Task>> submitTask(String token, Task task) async {
+  static Future<ApiResponse<bool>> updateTaskStatus(String token, int id, bool completed) async {
     try {
-      final response = await client.post(
-        Uri.parse(ApiConstants.baseUrl + ApiConstants.taskSubmit),
+      final response = await http.put(
+        Uri.parse(ApiConstants.baseUrl + '${ApiConstants.tasks}/$id'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: json.encode(task.toJson()),
+        body: jsonEncode({'completed': completed}),
       );
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return ApiResponse(data: Task.fromJson(json.decode(response.body)));
+      if (response.statusCode == 200) {
+        return ApiResponse.success(true);
       } else {
-        return ApiResponse(error: 'Failed to submit task: ${response.statusCode}');
+        return ApiResponse.failure('Failed to update task');
       }
     } catch (e) {
-      return ApiResponse(error: e.toString());
+      return ApiResponse.failure(e.toString());
+    }
+  }
+
+  static Future<ApiResponse<bool>> addTask(Task task) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      if (token == null) return ApiResponse.failure('Missing token');
+
+      final response = await http.post(
+        Uri.parse(ApiConstants.baseUrl + ApiConstants.tasks),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(task.toJson()),
+      );
+
+      if (response.statusCode == 201) {
+        return ApiResponse.success(true);
+      } else {
+        return ApiResponse.failure('Failed to add task');
+      }
+    } catch (e) {
+      return ApiResponse.failure(e.toString());
     }
   }
 }

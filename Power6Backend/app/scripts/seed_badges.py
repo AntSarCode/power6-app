@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from Power6Backend.app.models.badge import Badge
-from Power6Backend.app.database import SessionLocal
+from app.models.badge import Badge
+from app.database import SessionLocal
 
 BADGE_DATA = [
     {"title": "Starter", "description": "Complete your first task", "icon_uri": "starter.png"},

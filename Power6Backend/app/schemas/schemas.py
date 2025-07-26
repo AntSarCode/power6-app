@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import Literal, Optional
+from typing import Optional
+from datetime import datetime, date
 from enum import Enum
 
 class Tier(str, Enum):
@@ -24,6 +25,21 @@ class Task(TaskBase):
     class Config:
         orm_mode = True
 
+class TaskRead(BaseModel):
+    id: int
+    content: str
+    completed: bool
+    date_for: date
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class TaskUpdate(BaseModel):
+    completed: bool
+
+
 class UserCreate(BaseModel):
     username: str
     email: str
@@ -34,7 +50,11 @@ class UserRead(BaseModel):
     id: int
     username: str
     email: str
-    tier: Tier
+    is_admin: bool
+    hashed_password: str
+    created_at: datetime
+    updated_at: datetime
+    tier: str
 
     class Config:
         orm_mode = True

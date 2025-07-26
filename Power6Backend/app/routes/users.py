@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from Power6Backend.app.models import models
-from Power6Backend.app.schemas import schemas
-from Power6Backend.app.database import get_db
-from Power6Backend.app.routes.auth import get_password_hash
+from app.models import models
+from app.schemas import schemas
+from app.database import get_db
+from app.routes.auth import get_password_hash
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

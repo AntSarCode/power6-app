@@ -7,37 +7,23 @@ class StreakBadge extends StatelessWidget {
   const StreakBadge({
     Key? key,
     required this.streakCount,
-    this.isActive = true,
+    required this.isActive,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
-        color: isActive ? Colors.orangeAccent : Colors.grey,
+        color: isActive ? Colors.orange.shade100 : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          if (isActive)
-            BoxShadow(
-              color: Colors.orange.withOpacity(0.4),
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
-        ],
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_fire_department, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(
-            '$streakCount Day Streak',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Icon(Icons.local_fire_department, color: isActive ? Colors.orange : Colors.grey),
+          const SizedBox(width: 8),
+          Text('$streakCount Day Streak'),
         ],
       ),
     );

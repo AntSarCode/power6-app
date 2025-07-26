@@ -1,6 +1,7 @@
 class User {
   final int id;
   final String username;
+  final bool isSuperuser;
   final String email;
   final String tier;
   final DateTime createdAt;
@@ -8,6 +9,7 @@ class User {
   User({
     required this.id,
     required this.username,
+    required this.isSuperuser,
     required this.email,
     required this.tier,
     required this.createdAt,
@@ -17,6 +19,7 @@ class User {
     return User(
       id: json['id'],
       username: json['username'],
+      isSuperuser: json['is_superuser'] ?? false,
       email: json['email'],
       tier: json['tier'],
       createdAt: DateTime.parse(json['created_at']),
@@ -27,6 +30,7 @@ class User {
     return {
       'id': id,
       'username': username,
+      'is_superuser': isSuperuser,
       'email': email,
       'tier': tier,
       'created_at': createdAt.toIso8601String(),

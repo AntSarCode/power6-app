@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from Power6Backend.app.database import Base
+from app.database import Base
 
 class Badge(Base):
     __tablename__ = "badges"

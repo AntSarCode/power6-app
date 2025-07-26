@@ -1,43 +1,47 @@
 # Power6
 
-Power6 is a full-stack productivity journal app built to set and complete six daily priority-ranked tasks. It includes streak tracking, task history, subscription-based feature gating, and backend syncing.
+Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, subscription-based feature gating, and backend syncing.
 
 ---
 
-##  Features
+## 🚀 Features
 
-### Core Functionality
+### ✅ Core Functionality
 - **Task Input**: Add up to 6 ranked tasks per day
 - **Task Review**: Check off completed tasks and store history
 - **Streak Tracker**: Tracks consecutive days of full task completion
-- **Stats Dashboard** *(Pro Only)*: Visualize task performance over time
-- **Subscription Tiers**: Free, Plus, Pro — gated features and mock upgrades
+- **Timeline View** *(Plus/Pro Only)*: View past daily task completions
+- **Stats Dashboard** *(Pro Only)*: Visualize performance over time
+- **Subscription Tiers**: Free, Plus, Pro — gated features
 
-###  Backend Sync
-- All tasks saved to database
-- Tasks pulled on next login/device
-- No duplicate tasks for a single day
+### 🔁 Backend Sync
+- Task and user data saved to backend via FastAPI
+- Tasks pulled on next login or device
+- Duplicate task prevention per day
 
-###  Auth & User
-- User-based task storage
-- Mock authentication with `get_current_user`
+### 🔐 Auth & User Management
+- Token-based authentication (JWT)
+- User-specific data handling
+- Tier management (Free, Plus, Pro)
 
 ---
 
-##  Tech Stack
+## 🧱 Tech Stack
 
-### Frontend
-- React + TypeScript + Vite
-- Zustand or Context API (state)
-- `localStorage` + `fetch`
+### Frontend (Flutter)
+- Flutter SDK (web and desktop)
+- Provider or ChangeNotifier for state
+- SharedPreferences for local persistence
 
-### Backend
+### Backend (FastAPI)
 - FastAPI + Pydantic v2
 - SQLAlchemy ORM
-- SQLite (default), upgradeable to Postgres
+- SQLite (default) or PostgreSQL (optional)
 
-### Styling
-- Pure CSS for MVP simplicity
+### Dev Tools
+- VS Code / Android Studio
+- GitHub for version control
+- Platform support: Web, Windows
 
 ---
 
@@ -45,71 +49,77 @@ Power6 is a full-stack productivity journal app built to set and complete six da
 
 ### 1. Clone the Repo
 ```bash
-git clone https://github.com/your-username/power6.git
+git clone https://github.com/AntSarCode/power6.git
 cd power6
 ```
 
-### 2. Start the Backend
+### 2. Backend Setup
 ```bash
-cd backend
+cd Power6Backend
 uvicorn main:app --reload
 ```
 
-### 3. Start the Frontend
+### 3. Frontend Setup (Flutter)
 ```bash
-cd daily_6_frontend
-npm install
-npm run dev
+cd Power6Mobile/power6_mobile
+flutter run -d chrome
 ```
 
-> Make sure your backend is accessible at `http://localhost:8000` and CORS is enabled.
+> Ensure backend runs at `http://localhost:8000` with CORS enabled.
 
 ---
 
-## Subscription Tiers
+## 💳 Subscription Tiers
 | Feature                  | Free | Plus | Pro  |
 |--------------------------|------|------|------|
 | Task Input / Review      | ✅   | ✅   | ✅   |
 | Streak Tracker           | ✅   | ✅   | ✅   |
-| Task History (unlimited) | ❌   | ✅   | ✅   |
+| Timeline View            | ❌   | ✅   | ✅   |
 | Stats Dashboard          | ❌   | ❌   | ✅   |
 | Multi-device Sync        | ❌   | ✅   | ✅   |
 
 ---
 
-### Project Structure
+## 📁 Project Structure (Flutter + FastAPI)
 ```
 .
-├── daily_6_frontend        # React + Vite frontend
-│   └── src
-│       ├── pages           # TaskInput, TaskReview, etc.
-│       ├── services        # API wrappers
-│       ├── context         # UserContext for tier
-│       └── components      # Navbar, Layout
+├── Power6Mobile            # Flutter frontend (web + desktop)
+│   ├── lib
+│   │   ├── screens         # UI screens
+│   │   ├── widgets         # Reusable components
+│   │   ├── utils           # Helpers (date, error handling)
+│   │   ├── services        # API interaction
+│   │   ├── state           # AppState (provider)
+│   │   └── models          # Data models
+│   └── pubspec.yaml
 │
-├── backend
+├── Power6Backend           # FastAPI backend
 │   └── app
-│       ├── models          # SQLAlchemy Task & User models
-│       ├── routes          # FastAPI routes for /tasks
-│       ├── schemas         # Pydantic models (v2)
-│       └── main.py         # App entrypoint
+│       ├── models          # SQLAlchemy models
+│       ├── routes          # FastAPI route definitions
+│       ├── schemas         # Pydantic schemas
+│       └── main.py         # Entrypoint
 ```
 
 ---
 
-## Future Plans
-- About Page: Detailed app structure: Psychology, Productivity, and Tech
-- Stripe integration
-- JWT login system
-- AI-based task insights
-- App deployment (Vercel + Fly.io or Render)
-- Mobile app (React Native)
+## 📈 Dev Phases
+- Phase 1: Flutter Foundation ✅
+- Phase 2: MVP Task Logic ⏳
+- Phase 3: Backend Integration 🔜
+- Phase 4: Subscription + Monetization 🔜
+- Phase 5: Launch and Feedback 🔜
 
 ---
 
-## License
-MIT License — feel free to use, build on, or fork.
+## 📬 Feedback
+We welcome contributions, feedback, or ideas! Feel free to open an issue or contact the team.
 
 ---
 
-First completed and refined Full-Stack undertaking. Thank you for checking out Power6! Contributions and feedback are welcome.
+## 🪪 License
+MIT License — build, fork, and use freely.
+
+---
+
+Power6 is our first full-stack Flutter x FastAPI productivity build. Thanks for checking it out!

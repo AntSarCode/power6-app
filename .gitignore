@@ -11,7 +11,7 @@ android/.gradle/
 android/.idea/
 
 # Flutter environment files
-.env
+Power6Backend/.env
 .env.*
 *.iml
 
@@ -21,12 +21,14 @@ android/.idea/
 *.swp
 *.swo
 
-# ────── PYTHON BACKEND (OPTIONAL) ──────
+# ────── PYTHON BACKEND ──────
 Power6Backend/.venv/
 Power6Backend/__pycache__/
 Power6Backend/.pytest_cache/
 Power6Backend/*.pyc
 Power6Backend/*.pyo
+Power6Backend/*.env
+Power6Backend/generate_hash.py
 
 # ────── GENERAL ──────
 .DS_Store

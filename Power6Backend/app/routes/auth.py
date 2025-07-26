@@ -2,15 +2,15 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from typing import Optional
 import os
-import traceback
 
-from Power6Backend.app.models.models import User
-from Power6Backend.app.schemas.schemas import UserCreate, UserRead, Token, LoginRequest
-from Power6Backend.app.database import get_db
+from app.models.models import User, Task
+from app.schemas.schemas import UserCreate, UserRead, Token, LoginRequest, TaskRead, TaskUpdate
+from app.database import get_db
+from app.utils.hash import get_password_hash, verify_password
+
 
 router = APIRouter(
     prefix="/auth",
@@ -25,14 +25,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # === PASSWORD HASHING ===
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -83,7 +76,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/login", response_model=Token)
 @router.post("/login", response_model=Token)
 def login(
     login_data: LoginRequest,
@@ -149,3 +141,41 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @router.get("/me", response_model=UserRead)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@router.get("/tasks/sync", response_model=list[TaskRead])
+def sync_tasks_for_today(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    today = date.today()
+    tasks = (
+        db.query(Task)
+        .filter(Task.user_id == current_user.id)
+        .filter(Task.date_for == today)
+        .order_by(Task.created_at)
+        .all()
+    )
+    return tasks
+
+@router.patch("/tasks/{task_id}", response_model=TaskRead)
+def update_task_status(
+    task_id: int,
+    updated_task: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task.completed = updated_task.completed
+    task.updated_at = datetime.utcnow()
+
+    if updated_task.completed:
+        task.completed_at = datetime.utcnow()
+    else:
+        task.completed_at = None
+
+    db.commit()
+    db.refresh(task)
+    return task

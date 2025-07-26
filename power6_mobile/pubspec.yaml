@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_secure_storage: ^9.0.0
+
   # Core UI
   cupertino_icons: ^1.0.2
 
@@ -23,6 +25,9 @@ dependencies:
 
   # HTTP (for API services)
   http: ^1.2.1
+
+  # Preferences
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

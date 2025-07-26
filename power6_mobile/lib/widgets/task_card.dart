@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 class TaskCard extends StatelessWidget {
   final String title;
-  final String description;
+  final String? description;
   final bool isCompleted;
   final VoidCallback? onTap;
 
   const TaskCard({
     Key? key,
     required this.title,
-    required this.description,
+    this.description,
     this.isCompleted = false,
     this.onTap,
   }) : super(key: key);
@@ -36,15 +36,17 @@ class TaskCard extends StatelessWidget {
                   decoration: isCompleted ? TextDecoration.lineThrough : null,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+              if (description != null && description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  description!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                  ),
                 ),
-              ),
+              ]
             ],
           ),
         ),
