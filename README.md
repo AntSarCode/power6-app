@@ -1,3 +1,4 @@
+
 # Power6
 
 Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, subscription-based feature gating, and backend syncing.
@@ -18,11 +19,13 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 - Task and user data saved to backend via FastAPI
 - Tasks pulled on next login or device
 - Duplicate task prevention per day
+- Automatic database schema creation at startup
 
 ### 🔐 Auth & User Management
 - Token-based authentication (JWT)
 - User-specific data handling
-- Tier management (Free, Plus, Pro)
+- Tier management (Free, Plus, Pro, Elite, Admin)
+- ISO-formatted datetime serialization for all user/task responses
 
 ---
 
@@ -36,7 +39,9 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 ### Backend (FastAPI)
 - FastAPI + Pydantic v2
 - SQLAlchemy ORM
-- SQLite (default) or PostgreSQL (optional)
+- SQLite (default) or PostgreSQL (preferred)
+- Full CRUD for tasks
+- Live tier-aware auth system
 
 ### Dev Tools
 - VS Code / Android Studio
@@ -70,13 +75,14 @@ flutter run -d chrome
 ---
 
 ## 💳 Subscription Tiers
-| Feature                  | Free | Plus | Pro  |
-|--------------------------|------|------|------|
-| Task Input / Review      | ✅   | ✅   | ✅   |
-| Streak Tracker           | ✅   | ✅   | ✅   |
-| Timeline View            | ❌   | ✅   | ✅   |
-| Stats Dashboard          | ❌   | ❌   | ✅   |
-| Multi-device Sync        | ❌   | ✅   | ✅   |
+| Feature                  | Free | Plus | Pro  | Elite |
+|--------------------------|------|------|------|--------|
+| Task Input / Review      | ✅   | ✅   | ✅   | ✅     |
+| Streak Tracker           | ✅   | ✅   | ✅   | ✅     |
+| Timeline View            | ❌   | ✅   | ✅   | ✅     |
+| Stats Dashboard          | ❌   | ❌   | ✅   | ✅     |
+| Multi-device Sync        | ❌   | ✅   | ✅   | ✅     |
+| Admin Features           | ❌   | ❌   | ❌   | ✅     |
 
 ---
 
@@ -104,11 +110,11 @@ flutter run -d chrome
 ---
 
 ## 📈 Dev Phases
-- Phase 1: Flutter Foundation ✅
-- Phase 2: MVP Task Logic ⏳
-- Phase 3: Backend Integration 🔜
-- Phase 4: Subscription + Monetization 🔜
-- Phase 5: Launch and Feedback 🔜
+- ✅ Phase 1: Flutter Foundation
+- ✅ Phase 2: MVP Task Logic (completed)
+- 🔄 Phase 3: Final Auth Tweaks + Full CRUD
+- 🔄 Phase 4: Subscription + Monetization
+- 🔜 Phase 5: Public Launch and Feedback
 
 ---
 
