@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import '../config/api_constants.dart';
 import '../models/task.dart';
 import 'api_response.dart';
@@ -46,28 +46,19 @@ class TaskService {
     }
   }
 
-  static Future<ApiResponse<bool>> addTask(Task task) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
-      if (token == null) return ApiResponse.failure('Missing token');
+  static Future<void> addTask(Task task) async {
+    final token = await AuthService.getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConstants.baseUrl}/tasks/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(task.toJson()),
+    );
 
-      final response = await http.post(
-        Uri.parse(ApiConstants.baseUrl + ApiConstants.tasks),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(task.toJson()),
-      );
-
-      if (response.statusCode == 201) {
-        return ApiResponse.success(true);
-      } else {
-        return ApiResponse.failure('Failed to add task');
-      }
-    } catch (e) {
-      return ApiResponse.failure(e.toString());
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to save task: ${response.body}');
     }
   }
 }

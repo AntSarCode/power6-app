@@ -5,12 +5,16 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.routes import api_router
+from app.database import Base, engine
 
 app = FastAPI(
     title="Power6 API",
     description="Backend for the Power6 productivity app",
     version="1.0.0"
 )
+
+# Recreate database schema
+Base.metadata.create_all(bind=engine)
 
 # Allow CORS based on environment variable or default to dev mode
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")

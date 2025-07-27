@@ -51,6 +51,15 @@ class UserBadgeUpdate(BaseModel):
     badge_id: Optional[int]
 
 
+class BadgeAssignRequest(BaseModel):
+    user_id: int
+    badge_id: int
+    note: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class BadgeAssignResult(BaseModel):
     new_badges: List[UserBadgeRead] = []
     message: str = "Badges evaluated and assigned successfully."

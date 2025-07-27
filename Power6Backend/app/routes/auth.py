@@ -3,11 +3,18 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone, date
-from typing import Optional
+from typing import Optional, List
 import os
 
 from app.models.models import User, Task
-from app.schemas.schemas import UserCreate, UserRead, Token, LoginRequest, TaskRead, TaskUpdate
+from app.schemas.schemas import (
+    UserCreate,
+    UserRead,
+    Token,
+    LoginRequest,
+    TaskRead,
+    TaskUpdate
+)
 from app.database import get_db
 from app.utils.hash import get_password_hash, verify_password
 
@@ -66,11 +73,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
         access_token = create_access_token(data={"sub": new_user.username})
         refresh_token_value = create_refresh_token(data={"sub": new_user.username})
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token_value,
-            "token_type": "bearer"
-        }
+        return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer", "user": new_user.username}
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -100,10 +103,10 @@ def login(
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     refresh_token_value = create_refresh_token(data={"sub": user.username})
-    return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer"}
+    return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer", "user": user.username}
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(request: Request):
+def refresh_token(request: Request, db: Session = Depends(get_db)):
     token = request.headers.get("Authorization")
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
@@ -117,7 +120,15 @@ def refresh_token(request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
     new_access_token = create_access_token(data={"sub": username})
-    return {"access_token": new_access_token, "refresh_token": token, "token_type": "bearer"}
+    user = get_user(db, username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "access_token": new_access_token,
+        "refresh_token": token,
+        "token_type": "bearer",
+        "user": user.username
+    }
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
@@ -142,16 +153,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.get("/tasks/sync", response_model=list[TaskRead])
+@router.get("/tasks/sync", response_model=List[TaskRead])
 def sync_tasks_for_today(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    today = date.today()
+    today = date.today().isoformat()
     tasks = (
         db.query(Task)
         .filter(Task.user_id == current_user.id)
-        .filter(Task.date_for == today)
+        .filter(Task.created_at == today)
         .order_by(Task.created_at)
         .all()
     )

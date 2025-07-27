@@ -1,34 +1,38 @@
 from .schemas import (
     UserCreate,
     UserRead,
-    TaskCreate,
-    Task,
     Token,
+    LoginRequest,
+    TaskCreate,
+    TaskRead,
+    TaskUpdate,
     UserTierUpdate
 )
 
 from .badge import (
     BadgeCreate,
     BadgeRead,
-    BadgeUpdate,
     UserBadgeCreate,
     UserBadgeRead,
     UserBadgeUpdate,
+    BadgeAssignRequest,
     BadgeAssignResult
 )
 
 __all__ = [
     "UserCreate",
     "UserRead",
-    "TaskCreate",
-    "Task",
     "Token",
+    "LoginRequest",
+    "TaskCreate",
+    "TaskRead",
+    "TaskUpdate",
     "UserTierUpdate",
     "BadgeCreate",
     "BadgeRead",
-    "BadgeUpdate",
     "UserBadgeCreate",
     "UserBadgeRead",
     "UserBadgeUpdate",
+    "BadgeAssignRequest",
     "BadgeAssignResult"
 ]

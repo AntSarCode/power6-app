@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime
 from enum import Enum
 
 class Tier(str, Enum):
@@ -12,33 +12,29 @@ class Tier(str, Enum):
 
 class TaskBase(BaseModel):
     title: str
-    description: Optional[str] = None
+    notes: Optional[str] = None
+    priority: int
+    scheduled_for: datetime
+    completed: bool = False
+    streak_bound: bool = False
+    completed_at: Optional[datetime] = None
 
 class TaskCreate(TaskBase):
     pass
 
-class Task(TaskBase):
-    id: int
-    completed: bool
-    created: str
+class TaskUpdate(TaskBase):
+    pass
 
-    class Config:
-        orm_mode = True
-
-class TaskRead(BaseModel):
+class TaskRead(TaskBase):
     id: int
-    content: str
-    completed: bool
-    date_for: date
+    user_id: int
     created_at: datetime
-    updated_at: datetime
 
     class Config:
         orm_mode = True
-
-class TaskUpdate(BaseModel):
-    completed: bool
-
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class UserCreate(BaseModel):
     username: str
@@ -58,11 +54,15 @@ class UserRead(BaseModel):
 
     class Config:
         orm_mode = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+    user: str
 
 class LoginRequest(BaseModel):
     username: Optional[str] = None

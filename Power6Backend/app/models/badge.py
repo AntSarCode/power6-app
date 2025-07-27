@@ -23,3 +23,12 @@ class UserBadge(Base):
 
     user = relationship("User", back_populates="user_badges")
     badge = relationship("Badge", back_populates="user_badges")
+
+
+class BadgeAssignRequest(Base):
+    __tablename__ = "badge_assign_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    badge_id = Column(Integer, ForeignKey("badges.id", ondelete="CASCADE"), nullable=False)
+    note = Column(String, nullable=True)

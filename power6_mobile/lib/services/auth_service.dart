@@ -14,7 +14,7 @@ class AuthService {
     try {
       final response = await client.post(
         Uri.parse(ApiConstants.baseUrl + ApiConstants.login),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json'}, // ✅ Fixed typo here
         body: jsonEncode({'username': username, 'password': password}),
       );
 
@@ -25,7 +25,7 @@ class AuthService {
         await prefs.setString('refresh_token', data['refresh_token']);
         return ApiResponse.success(data['access_token']);
       } else {
-        return ApiResponse.failure('Login failed: \${response.statusCode}');
+        return ApiResponse.failure('Login failed: ${response.statusCode}');
       }
     } catch (e) {
       return ApiResponse.failure(e.toString());
@@ -49,7 +49,7 @@ class AuthService {
         await prefs.setBool('is_superuser', user.isSuperuser);
         return ApiResponse.success(user);
       } else {
-        return ApiResponse.failure('Failed to fetch user: \${response.statusCode}');
+        return ApiResponse.failure('Failed to fetch user: ${response.statusCode}');
       }
     } catch (e) {
       return ApiResponse.failure(e.toString());
@@ -72,5 +72,11 @@ class AuthService {
   Future<bool> isSuperuser() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('is_superuser') ?? false;
+  }
+
+  // ✅ Static helper to retrieve token for authorized API calls
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
   }
 }

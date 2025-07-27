@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.models import models
+from datetime import date, timedelta
+
+from app.models import models, User  # Removed direct Task import
+from app.routes.auth import get_current_user, get_password_hash
 from app.schemas import schemas
 from app.database import get_db
-from app.routes.auth import get_password_hash
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -12,6 +14,39 @@ def get_user_by_username(username: str, db: Session) -> models.User:
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
+
+@router.get("/streak")
+def get_streak(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Calculate the user's current task streak based on streak-bound tasks.
+    """
+    # Step 1: Query all completed streak-bound tasks
+    tasks = (
+        db.query(models.Task)
+        .filter(
+            models.Task.user_id == current_user.id,
+            models.Task.streak_bound == True,
+            models.Task.completed == True,
+        )
+        .order_by(models.Task.scheduled_for.desc())  # Most recent first
+        .all()
+    )
+
+    if not tasks:
+        return {"streak": 0}
+
+    # Step 2: Create a set of all completed dates
+    completed_dates = set(task.scheduled_for.date() for task in tasks if task.scheduled_for)
+
+    # Step 3: Count consecutive days from today
+    streak = 0
+    current_day = date.today()
+
+    while current_day in completed_dates:
+        streak += 1
+        current_day -= timedelta(days=1)
+
+    return {"streak": streak}
 
 @router.get("/{username}", response_model=schemas.UserRead, status_code=status.HTTP_200_OK)
 def get_user(username: str, db: Session = Depends(get_db)):

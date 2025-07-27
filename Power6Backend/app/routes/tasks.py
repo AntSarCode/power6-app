@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
 
-from app.models.models import Task as TaskModel, User
+from app.models.models import Task as TaskModel
+from app.models.models import User
 from app.database import get_db
 from app.routes.auth import get_current_user
-from app.schemas.schemas import TaskCreate, Task
+from app.schemas.schemas import TaskCreate, TaskRead
 
 router = APIRouter(
     prefix="/tasks",
@@ -23,40 +24,60 @@ def upload_tasks(
 
     db.query(TaskModel).filter(
         TaskModel.user_id == current_user.id,
-        TaskModel.created == today
+        TaskModel.created_at == today
     ).delete(synchronize_session=False)
 
     for task in tasks:
-        db_task = TaskModel(**task.model_dump(), user_id=current_user.id, created=today)
+        db_task = TaskModel(
+            title=task.title,
+            notes=task.notes,
+            priority=task.priority,
+            scheduled_for=task.scheduled_for,
+            completed=task.completed,
+            streak_bound=task.streak_bound,
+            completed_at=task.completed_at,
+            user_id=current_user.id,
+            created_at=today,
+        )
         db.add(db_task)
     db.commit()
 
     return {"status": "success", "count": len(tasks)}
 
 
-@router.get("/today", response_model=List[Task], status_code=status.HTTP_200_OK)
+@router.get("/today", response_model=List[TaskRead], status_code=status.HTTP_200_OK)
 def get_today_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     today = date.today().isoformat()
-    return db.query(TaskModel).filter(TaskModel.user_id == current_user.id, TaskModel.created == today).all()
+    return db.query(TaskModel).filter(TaskModel.user_id == current_user.id, TaskModel.created_at == today).all()
 
 
-@router.post("/", response_model=Task, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    db_task = TaskModel(**task.model_dump(), user_id=current_user.id)
+    db_task = TaskModel(
+        title=task.title,
+        notes=task.notes,
+        priority=task.priority,
+        scheduled_for=task.scheduled_for,
+        completed=task.completed,
+        streak_bound=task.streak_bound,
+        completed_at=task.completed_at,
+        user_id=current_user.id,
+        created_at=date.today().isoformat()
+    )
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
     return db_task
 
 
-@router.get("/", response_model=List[Task], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[TaskRead], status_code=status.HTTP_200_OK)
 def read_tasks(
     skip: int = 0,
     limit: int = 100,
@@ -72,7 +93,7 @@ def read_tasks(
     )
 
 
-@router.get("/{task_id}", response_model=Task, status_code=status.HTTP_200_OK)
+@router.get("/{task_id}", response_model=TaskRead, status_code=status.HTTP_200_OK)
 def read_task(
     task_id: int,
     db: Session = Depends(get_db),
@@ -84,7 +105,7 @@ def read_task(
     return task
 
 
-@router.put("/{task_id}", response_model=Task, status_code=status.HTTP_200_OK)
+@router.put("/{task_id}", response_model=TaskRead, status_code=status.HTTP_200_OK)
 def update_task(
     task_id: int,
     updated_task: TaskCreate,

@@ -39,7 +39,7 @@ class ApiService {
     try {
       final response = await client.post(
         Uri.parse(ApiConstants.baseUrl + endpoint),
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Title-Type': 'application/json'},
         body: json.encode(body),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
