@@ -32,9 +32,8 @@ def seed_badges():
                     icon_uri=badge["icon_uri"]
                 ))
         db.commit()
-        print("✅ Badges seeded.")
-    except Exception as e:
-        print("❌ Error seeding badges:", e)
+    except Exception:
+        pass
     finally:
         db.close()
 

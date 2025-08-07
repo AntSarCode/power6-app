@@ -47,49 +47,67 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       appBar: AppBar(
         title: const Text('Review Tasks'),
       ),
-      body: FutureBuilder<List<Task>>(
-        future: _todayTasks,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: \${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No tasks for today.'));
-          }
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: FutureBuilder<List<Task>>(
+                future: _todayTasks,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: \${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No tasks for today.'));
+                  }
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'You\'ve completed \${snapshot.data!.where((t) => t.completed).length} of \${snapshot.data!.length} tasks today.',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    final task = snapshot.data![index];
-                    return ListTile(
-                      leading: Checkbox(
-                        value: task.completed,
-                        onChanged: (_) => _toggleTaskCompletion(task),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'You\'ve completed \${snapshot.data!.where((t) => t.completed).length} of \${snapshot.data!.length} tasks today.',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal,
+                        ),
                       ),
-                      title: Text(task.title,
-                          style: TextStyle(
-                            decoration: task.completed
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                          )),
-                    );
-                  },
-                ),
+                      const SizedBox(height: 16),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          final task = snapshot.data![index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: ListTile(
+                              leading: Checkbox(
+                                value: task.completed,
+                                onChanged: (_) => _toggleTaskCompletion(task),
+                              ),
+                              title: Text(
+                                task.title,
+                                style: TextStyle(
+                                  decoration: task.completed
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ),
       ),
     );
   }

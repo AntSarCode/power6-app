@@ -37,11 +37,3 @@ async def create_checkout(data: CheckoutRequest):
         return {"checkout_url": session.url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/test-key")
-async def stripe_key_check():
-    try:
-        stripe.Balance.retrieve()
-        return {"status": "Stripe key valid"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))

@@ -49,7 +49,6 @@ class AppState extends ChangeNotifier {
     if (response.error != null) {
       _tasks[index] = task;
       notifyListeners();
-      debugPrint("Task status update failed: \${response.error}");
     }
 
     await _persist();
@@ -78,12 +77,8 @@ class AppState extends ChangeNotifier {
         _tasks = response.data!;
         await _persist();
         notifyListeners();
-      } else {
-        debugPrint('Sync failed: \${response.error}');
       }
-    } catch (e) {
-      print('Task sync failed: \$e');
-    }
+    } catch (_) {}
   }
 
   Future<void> loadStreak() async {
@@ -111,28 +106,5 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Task> _defaultTasks() => [
-        Task(
-          id: 1,
-          userId: 1,
-          title: "Complete Power6 Layout",
-          notes: "Verify all modules show something on screen",
-          priority: 1,
-          completed: false,
-          scheduledFor: DateTime.now(),
-          completedAt: null,
-          streakBound: true,
-        ),
-        Task(
-          id: 2,
-          userId: 1,
-          title: "Celebrate Progress",
-          notes: "You've scaffolded the entire frontend!",
-          priority: 2,
-          completed: true,
-          scheduledFor: DateTime.now(),
-          completedAt: DateTime.now(),
-          streakBound: false,
-        ),
-      ];
+  List<Task> _defaultTasks() => [];
 }
