@@ -1,7 +1,6 @@
-
 # Power6
 
-Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, subscription-based feature gating, and backend syncing.
+Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, badge rewards, subscription-based feature gating, and backend syncing.
 
 ---
 
@@ -13,13 +12,15 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 - **Streak Tracker**: Tracks consecutive days of full task completion
 - **Timeline View** *(Plus/Pro Only)*: View past daily task completions
 - **Stats Dashboard** *(Pro Only)*: Visualize performance over time
-- **Subscription Tiers**: Free, Plus, Pro — gated features
+- **Badges**: Earn milestones based on behavior
+- **Subscription Tiers**: Free, Plus, Pro, Elite — gated features
 
 ### 🔁 Backend Sync
 - Task and user data saved to backend via FastAPI
 - Tasks pulled on next login or device
 - Duplicate task prevention per day
 - Automatic database schema creation at startup
+- Badge sync endpoint
 
 ### 🔐 Auth & User Management
 - Token-based authentication (JWT)
@@ -42,6 +43,7 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 - SQLite (default) or PostgreSQL (preferred)
 - Full CRUD for tasks
 - Live tier-aware auth system
+- Stripe subscription hooks (WIP)
 
 ### Dev Tools
 - VS Code / Android Studio
@@ -81,6 +83,7 @@ flutter run -d chrome
 | Streak Tracker           | ✅   | ✅   | ✅   | ✅     |
 | Timeline View            | ❌   | ✅   | ✅   | ✅     |
 | Stats Dashboard          | ❌   | ❌   | ✅   | ✅     |
+| Badge Rewards            | ❌   | ✅   | ✅   | ✅     |
 | Multi-device Sync        | ❌   | ✅   | ✅   | ✅     |
 | Admin Features           | ❌   | ❌   | ❌   | ✅     |
 
@@ -110,11 +113,11 @@ flutter run -d chrome
 ---
 
 ## 📈 Dev Phases
-- ✅ Phase 1: Flutter Foundation
-- ✅ Phase 2: MVP Task Logic (completed)
-- 🔄 Phase 3: Final Auth Tweaks + Full CRUD
-- 🔄 Phase 4: Subscription + Monetization
-- 🔜 Phase 5: Public Launch and Feedback
+- ✅ Phase 1: Core UI, routing, local logic
+- ✅ Phase 2: Task CRUD + Auth integration
+- ✅ Phase 3: Subscription UI + tier gating
+- ✅ Phase 4: Final polish + responsive design + badge feature
+- 🔜 Phase 5: Deployment and feedback loop
 
 ---
 
