@@ -1,35 +1,35 @@
 class Badge {
   final int id;
-  final String name;
+  final String title;
   final String description;
-  final String icon;
-  final DateTime earnedAt;
+  final String iconUri;
+  final bool achieved;
 
   Badge({
     required this.id,
-    required this.name,
+    required this.title,
     required this.description,
-    required this.icon,
-    required this.earnedAt,
+    required this.iconUri,
+    required this.achieved,
   });
 
   factory Badge.fromJson(Map<String, dynamic> json) {
     return Badge(
       id: json['id'],
-      name: json['name'],
+      title: json['title'],
       description: json['description'],
-      icon: json['icon'],
-      earnedAt: DateTime.parse(json['earned_at']),
+      iconUri: json['icon_uri'] ?? '',
+      achieved: json['achieved'] ?? false,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'title': title,
       'description': description,
-      'icon': icon,
-      'earned_at': earnedAt.toIso8601String(),
+      'icon_uri': iconUri,
+      'achieved': achieved,
     };
   }
 }

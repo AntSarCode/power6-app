@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../services/task_service.dart';
 import '../widgets/task_card.dart';
+import '../state/app_state.dart';
 
 class TimelineScreen extends StatefulWidget {
   const TimelineScreen({super.key});
@@ -13,6 +15,10 @@ class TimelineScreen extends StatefulWidget {
 
 class _TimelineScreenState extends State<TimelineScreen> {
   late Future<List<Task>> _taskHistory;
+
+  bool hasProAccess(String tier) {
+    return tier == 'pro' || tier == 'elite' || tier == 'admin';
+  }
 
   @override
   void initState() {
@@ -37,6 +43,19 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tier = Provider.of<AppState>(context).user?.tier ?? 'free';
+
+    if (!hasProAccess(tier)) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'This feature is available to Pro users only.',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Task Timeline'),

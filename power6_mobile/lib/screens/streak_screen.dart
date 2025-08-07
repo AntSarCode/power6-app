@@ -6,12 +6,28 @@ import '../services/streak_service.dart';
 class StreakScreen extends StatelessWidget {
   const StreakScreen({super.key});
 
+  bool hasPlusAccess(String tier) {
+    return tier == 'plus' || tier == 'pro' || tier == 'elite' || tier == 'admin';
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final streakService = Provider.of<StreakService>(context, listen: false);
-    final streakCount = appState.currentStreak;
     final hasCompletedToday = appState.todayCompleted;
+    final streakCount = appState.currentStreak;
+    final tier = appState.user?.tier ?? 'free';
+
+    if (!hasPlusAccess(tier)) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'This feature is available to Plus users only.',
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

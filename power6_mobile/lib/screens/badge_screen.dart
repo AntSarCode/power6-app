@@ -1,42 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
-import '../models/badge.dart' as badge_model;
-import 'api_response.dart';
-
-class ApiService {
-  Future<ApiResponse> get(String path, {String? token}) async {
-    // Replace this with actual HTTP request logic
-    // This is a stub for the sake of this patch
-    return ApiResponse.success({
-      'badges': [
-        {
-          'id': 1,
-          'title': 'First Task Complete',
-          'description': 'Completed your first task!',
-          'achieved': true
-        },
-        {
-          'id': 2,
-          'title': 'Streak Starter',
-          'description': 'Logged 3 days in a row',
-          'achieved': false
-        }
-      ]
-    });
-  }
-
-  Future<ApiResponse<List<badge_model.Badge>>> fetchUserBadges(String token) async {
-    final response = await get('/badges/me', token: token);
-    if (response.isSuccess) {
-      final badgeList = (response.data!['badges'] ?? response.data) as List<dynamic>;
-      final badges = badgeList.map((json) => badge_model.Badge.fromJson(json)).toList();
-      return ApiResponse.success(badges);
-    } else {
-      return ApiResponse.failure(response.error ?? 'Unknown error');
-    }
-  }
-}
+import '../services/api_service.dart'; // Updated import
+import '../models/badge.dart' as model;
 
 class BadgeScreen extends StatefulWidget {
   const BadgeScreen({super.key});
@@ -46,9 +12,14 @@ class BadgeScreen extends StatefulWidget {
 }
 
 class _BadgeScreenState extends State<BadgeScreen> {
-  List<badge_model.Badge> _badges = [];
+  List<model.Badge> _badges = [];
   bool _loading = true;
   String? _error;
+  final _apiService = ApiService(); // Updated instance
+
+  bool hasEliteAccess(String? tier) {
+    return tier == 'elite' || tier == 'admin';
+  }
 
   @override
   void initState() {
@@ -58,7 +29,7 @@ class _BadgeScreenState extends State<BadgeScreen> {
 
   void _fetchBadges() async {
     final token = context.read<AppState>().accessToken;
-    final result = await ApiService().fetchUserBadges(token ?? '');
+    final result = await _apiService.fetchUserBadges(token ?? ""); // Updated call
     if (result.isSuccess) {
       setState(() {
         _badges = result.data!;
@@ -75,13 +46,13 @@ class _BadgeScreenState extends State<BadgeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppState>().user;
-    final isPro = user?.tier == 'pro' || user?.tier == 'elite' || user?.tier == 'admin';
+    final tier = user?.tier;
 
-    if (!isPro) {
+    if (!hasEliteAccess(tier)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Badges')),
         body: const Center(
-          child: Text("Upgrade to Pro to unlock badges!"),
+          child: Text("Upgrade to Elite to unlock badges!"),
         ),
       );
     }

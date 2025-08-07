@@ -11,16 +11,13 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final tasks = appState.tasks;
-    final user = appState.username ?? "User";
+    final user = appState.user?.username ?? "User";
     final streak = appState.currentStreak;
     final hasCompletedToday = appState.todayCompleted;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Power6 Dashboard"),
-        centerTitle: true,
-      ),
-      body: Padding(
+    return AppScaffold(
+      title: "Power6 Dashboard",
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,6 +60,21 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class AppScaffold extends StatelessWidget {
+  final Widget child;
+  final String? title;
+
+  const AppScaffold({super.key, required this.child, this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title ?? 'Power6')),
+      body: SafeArea(child: child),
     );
   }
 }

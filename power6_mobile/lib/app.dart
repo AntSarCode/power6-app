@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'navigation/main_nav.dart';
+import 'ui/theme.dart'; //
 
 class PowerApp extends StatelessWidget {
   const PowerApp({super.key});
@@ -9,15 +10,11 @@ class PowerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Power6',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.deepPurple,
-        scaffoldBackgroundColor: Colors.white,
-      ),
+      theme: appTheme,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/': (context) => const MainNav(), // 👈 updated
+        '/': (context) => const MainNav(),
       },
     );
   }

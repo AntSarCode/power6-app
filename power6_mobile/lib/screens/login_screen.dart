@@ -29,9 +29,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (response.isSuccess) {
       final token = response.data!;
-      context.read<AppState>().setAuthToken(token);
-      if (context.mounted) {
-        Navigator.pushReplacementNamed(context, '/');
+      final userResponse = await AuthService().getCurrentUser();
+
+      if (userResponse.isSuccess && userResponse.data != null) {
+        context.read<AppState>().setAuthToken(token, user: userResponse.data);
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/');
+        }
+      } else {
+        setState(() {
+          _error = userResponse.error ?? 'Failed to load user info';
+          _loading = false;
+        });
       }
     } else {
       setState(() {
@@ -79,4 +88,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

@@ -5,6 +5,7 @@ class User {
   final String email;
   final String tier;
   final DateTime createdAt;
+  final int streak;
 
   User({
     required this.id,
@@ -13,6 +14,7 @@ class User {
     required this.email,
     required this.tier,
     required this.createdAt,
+    required this.streak,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class User {
       email: json['email'],
       tier: json['tier'],
       createdAt: DateTime.parse(json['created_at']),
+      streak: json['streak'] ?? 0,
     );
   }
 
@@ -34,6 +37,7 @@ class User {
       'email': email,
       'tier': tier,
       'created_at': createdAt.toIso8601String(),
+      'streak': streak,
     };
   }
 }

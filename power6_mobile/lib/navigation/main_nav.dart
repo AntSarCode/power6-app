@@ -4,6 +4,8 @@ import '../screens/task_input_screen.dart';
 import '../screens/task_review_screen.dart';
 import '../screens/streak_screen.dart';
 import '../screens/timeline_screen.dart';
+import '../screens/subscription_screen.dart';
+import '../screens/badge_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -21,6 +23,8 @@ class _MainNavState extends State<MainNav> {
     TimelineScreen(),
     StreakScreen(),
     HomeScreen(), // Dashboard
+    SubscriptionScreen(),
+    BadgeScreen(),
   ];
 
   @override
@@ -39,9 +43,10 @@ class _MainNavState extends State<MainNav> {
           BottomNavigationBarItem(icon: Icon(Icons.timeline), label: 'Timeline'),
           BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: 'Streak'),
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.workspace_premium), label: 'Subscribe'),
+          BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'Badges'),
         ],
       ),
     );
   }
 }
-

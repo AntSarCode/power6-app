@@ -13,7 +13,12 @@ android/.idea/
 # Flutter environment files
 Power6Backend/.env
 .env.*
+.env
 *.iml
+
+# Flutter source safety
+!lib/**
+lib/**/**.dart
 
 # IDEs
 .idea/
@@ -28,12 +33,15 @@ Power6Backend/.pytest_cache/
 Power6Backend/*.pyc
 Power6Backend/*.pyo
 Power6Backend/*.env
-Power6Backend/generate_hash.py
+
+# Backend script safety
+!Power6Backend/app/**.py
 
 # ────── GENERAL ──────
 .DS_Store
 *.log
 *.lock
+*.zip
 node_modules/
 npm-debug.log
 yarn-debug.log

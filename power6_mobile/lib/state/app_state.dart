@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/task.dart';
+import '../models/user.dart';
 import '../services/task_service.dart';
 import '../services/streak_service.dart';
 
@@ -9,8 +10,8 @@ class AppState extends ChangeNotifier {
   final String _storageKey = 'tasks';
   List<Task> _tasks = [];
   String? _authToken;
+  User? _user;
   int currentStreak = 0;
-  String? username;
 
   AppState() {
     _loadTasks();
@@ -19,12 +20,13 @@ class AppState extends ChangeNotifier {
 
   List<Task> get tasks => _tasks;
   String? get accessToken => _authToken;
+  User? get user => _user;
   int get completedCount => _tasks.where((task) => task.completed).length;
   bool get todayCompleted => completedCount >= 6;
 
-  void setAuthToken(String token, {String? user}) {
+  void setAuthToken(String token, {User? user}) {
     _authToken = token;
-    username = user;
+    _user = user;
     syncTasks(token);
     loadStreak();
     notifyListeners();
@@ -105,7 +107,7 @@ class AppState extends ChangeNotifier {
     _authToken = null;
     _tasks = [];
     currentStreak = 0;
-    username = null;
+    _user = null;
     notifyListeners();
   }
 
