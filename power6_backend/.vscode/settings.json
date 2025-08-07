@@ -1,0 +1,8 @@
+{
+  "python.pythonPath": "${workspaceFolder}/power6_backend/.venv/Scripts/python.exe",
+  "python.defaultInterpreterPath": "${workspaceFolder}/power6_backend/.venv/Scripts/python.exe",
+  "terminal.integrated.env.windows": {
+    "VIRTUAL_ENV": "${workspaceFolder}/power6_backend/.venv",
+    "PATH": "${workspaceFolder}/power6_backend/.venv/Scripts:${env:PATH}"
+  }
+}

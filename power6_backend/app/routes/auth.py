@@ -18,7 +18,6 @@ from app.schemas.schemas import (
 from app.database import get_db
 from app.utils.hash import get_password_hash, verify_password
 
-
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -52,10 +51,8 @@ def get_user(db: Session, username: str) -> Optional[User]:
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     user = get_user(db, username)
     if not user:
-        print("User not found")
         return None
     if not verify_password(password, user.hashed_password):
-        print("Password mismatch")
         return None
     return user
 
@@ -75,8 +72,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         refresh_token_value = create_refresh_token(data={"sub": new_user.username})
         return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer", "user": new_user.username}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/login", response_model=Token)

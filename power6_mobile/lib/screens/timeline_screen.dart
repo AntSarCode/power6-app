@@ -46,11 +46,16 @@ class _TimelineScreenState extends State<TimelineScreen> {
     final tier = Provider.of<AppState>(context).user?.tier ?? 'free';
 
     if (!hasProAccess(tier)) {
-      return const Scaffold(
-        body: Center(
-          child: Text(
-            'This feature is available to Pro users only.',
-            style: TextStyle(fontSize: 18),
+      return Scaffold(
+        appBar: AppBar(title: const Text('Task Timeline')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              'This feature is available to Pro users only.',
+              style: TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );
@@ -60,41 +65,55 @@ class _TimelineScreenState extends State<TimelineScreen> {
       appBar: AppBar(
         title: const Text('Task Timeline'),
       ),
-      body: FutureBuilder<List<Task>>(
-        future: _taskHistory,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: \${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No task history available.'));
-          }
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: FutureBuilder<List<Task>>(
+                future: _taskHistory,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: \${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No task history available.'));
+                  }
 
-          final tasksByDate = _groupTasksByDate(snapshot.data!);
+                  final tasksByDate = _groupTasksByDate(snapshot.data!);
 
-          return ListView.builder(
-            itemCount: tasksByDate.length,
-            itemBuilder: (context, index) {
-              final date = tasksByDate.keys.elementAt(index);
-              final tasks = tasksByDate[date]!;
-              return ExpansionTile(
-                title: Text(
-                  date,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                children: tasks
-                    .map((task) => TaskCard(
-                          title: task.title,
-                          description: task.notes,
-                          isCompleted: task.completed,
-                          onTap: () {},
-                        ))
-                    .toList(),
-              );
-            },
-          );
-        },
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: tasksByDate.entries.map((entry) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ExpansionTile(
+                            title: Text(
+                              entry.key,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            children: entry.value
+                                .map((task) => TaskCard(
+                                      title: task.title,
+                                      description: task.notes,
+                                      isCompleted: task.completed,
+                                      onTap: () {},
+                                    ))
+                                .toList(),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

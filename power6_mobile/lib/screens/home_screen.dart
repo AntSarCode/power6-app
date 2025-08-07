@@ -17,27 +17,45 @@ class HomeScreen extends StatelessWidget {
 
     return AppScaffold(
       title: "Power6 Dashboard",
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "👋 Welcome back, $user!",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            StreakBadge(streakCount: streak, isActive: hasCompletedToday),
-            const SizedBox(height: 20),
-            Text(
-              'Today\'s Progress: ${appState.completedCount}/6 tasks completed',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: tasks.isEmpty
-                  ? const Center(child: Text('No tasks found.'))
-                  : ListView.builder(
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "👋 Welcome back, $user!",
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  StreakBadge(streakCount: streak, isActive: hasCompletedToday),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Today\'s Progress: ${appState.completedCount}/6 tasks completed',
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  if (tasks.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 32.0),
+                        child: Text(
+                          'No tasks found.',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
                         final task = tasks[index];
@@ -56,8 +74,10 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
