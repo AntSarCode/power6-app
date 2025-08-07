@@ -60,4 +60,3 @@ pluggy==1.6.0
 annotated-types==0.7.0
 greenlet==3.2.3
 pycparser==2.22
-ECHO is on.
