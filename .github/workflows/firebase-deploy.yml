@@ -30,10 +30,18 @@ jobs:
         working-directory: power6_mobile
         run: flutter build web --release
 
+      - name: Verify build output
+        run: |
+          flutter --version
+          echo "Repo root contents:" && ls -la
+          echo "Web build contents:" && ls -la power6_mobile/build/web || true
+          du -sh power6_mobile/build/web || true
+
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6_JSON }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
+          entryPoint: .
