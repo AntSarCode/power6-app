@@ -1,0 +1,37 @@
+name: Deploy Flutter Web to Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Flutter pub get
+        working-directory: power6_mobile
+        run: flutter pub get
+
+      - name: Build Flutter Web (release)
+        working-directory: power6_mobile
+        run: flutter build web --release
+
+      # Deploy using Firebase official GitHub Action
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live
+          entryPoint: power6_mobile/build/web
