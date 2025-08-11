@@ -22,19 +22,13 @@ jobs:
           flutter-version: '3.24.0'
           cache: true
 
-      - name: Upgrade Flutter and dependencies
-        working-directory: power6_mobile
-        run: |
-          flutter upgrade
-          flutter pub upgrade --major-versions
-
       - name: Flutter pub get
         working-directory: power6_mobile
         run: flutter pub get
 
       - name: Build Flutter Web (release)
         working-directory: power6_mobile
-        run: flutter build web --release --web-renderer html
+        run: flutter build web --release
 
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
