@@ -1,1 +1,73 @@
+# ------------------------------
+# Global
+# ------------------------------
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# ------------------------------
+# IDE / Editor
+# ------------------------------
+.idea/
+.vscode/
+*.iml
+
+# ------------------------------
+# Flutter / Dart (Frontend)
+# ------------------------------
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.melos_tool/
+
+# Build outputs
+/build/
+/power6_mobile/build/
+/power6_mobile/.dart_tool/
+/power6_mobile/.dart_tool/chrome-device/
+
+# Generated assets
+**/gen/
+**/generated_plugin_registrant.dart
+
+# ------------------------------
+# Backend (Python / FastAPI)
+# ------------------------------
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
 .env
+.venv/
+env/
+venv/
+
+# Byte-compiled / optimized
+*.egg-info/
+.eggs/
+
+# ------------------------------
+# Firebase
+# ------------------------------
+.firebase/
+!.firebaserc
+firebase-debug.log
+firebase-debug.*
+*.cache
+
+# ------------------------------
+# Node / npm (if any functions)
+# ------------------------------
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ------------------------------
+# OS Specific
+# ------------------------------
+ehthumbs.db
+Icon?
+

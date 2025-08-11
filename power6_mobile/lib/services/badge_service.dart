@@ -1,131 +1,78 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../state/app_state.dart';
-import '../models/badge.dart' as userbadge;
-import '../services/api_response.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../models/badge.dart' as userbadge;
+import 'api_response.dart';
+
+/// BadgeService: fetches badges from the backend and never throws.
 class BadgeService {
-  static Future<ApiResponse<List<userbadge.Badge>>> fetchUserBadges(String token) async {
+  static const String _baseUrl = 'https://power6-backend.onrender.com';
+  static const Duration _timeout = Duration(seconds: 15);
+
+  /// Safe GET helper that accepts absolute or relative paths.
+  static Future<ApiResponse<dynamic>> _get(String path, {String? token}) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://your.api.endpoint/api/dashboard/badges'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+      final uri = Uri.parse(
+        path.startsWith('http') ? path : '$_baseUrl${path.startsWith('/') ? path : '/$path'}',
       );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body);
-        final badges = jsonList.map((json) => userbadge.Badge.fromJson(json)).toList();
-        return ApiResponse.success(badges);
-      } else {
-        return ApiResponse.failure('Failed to fetch badges: ${response.statusCode}');
+      final res = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_timeout);
+
+      if (res.statusCode == 204 || res.body.isEmpty) {
+        return ApiResponse.success(null);
       }
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        try {
+          return ApiResponse.success(jsonDecode(res.body));
+        } catch (_) {
+          return ApiResponse.success(null); // non-JSON success
+        }
+      }
+
+      return ApiResponse.failure('Request failed (${res.statusCode})');
+    } on TimeoutException {
+      return ApiResponse.failure('Network timeout. Please try again.');
     } catch (e) {
-      return ApiResponse.failure('Error: $e');
-    }
-  }
-}
-
-class BadgeScreen extends StatefulWidget {
-  const BadgeScreen({super.key});
-
-  @override
-  State<BadgeScreen> createState() => _BadgeScreenState();
-}
-
-class _BadgeScreenState extends State<BadgeScreen> {
-  late Future<List<userbadge.Badge>> _badges;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBadges();
-  }
-
-  void _loadBadges() async {
-    final token = context.read<AppState>().accessToken ?? '';
-    final response = await BadgeService.fetchUserBadges(token);
-    if (response.isSuccess && response.data != null) {
-      setState(() {
-        _badges = Future.value(response.data);
-      });
-    } else {
-      setState(() {
-        _badges = Future.error(response.error ?? 'Failed to load badges');
-      });
+      return ApiResponse.failure('Network error: $e');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('🏅 Your Badges')),
-      body: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
-              child: FutureBuilder<List<userbadge.Badge>>(
-                future: _badges,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No badges earned yet.'));
-                  }
+  /// Returns user's badges. Empty list if not logged in or none found.
+  static Future<ApiResponse<List<userbadge.Badge>>> fetchUserBadges(String token) async {
+    if (token.isEmpty) {
+      return ApiResponse.success(<userbadge.Badge>[]); // don't hit network without auth
+    }
 
-                  return Wrap(
-                    spacing: 16.0,
-                    runSpacing: 16.0,
-                    children: snapshot.data!.map((badge) {
-                      final title = badge.title;
-                      final description = badge.description;
+    final resp = await _get('/api/dashboard/badges', token: token);
+    if (!resp.isSuccess) {
+      return ApiResponse.failure(resp.error ?? 'Unable to load badges');
+    }
 
-                      return Container(
-                        width: constraints.maxWidth < 400 ? double.infinity : 160,
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.teal.shade50,
-                          border: Border.all(color: Colors.teal.shade200),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.emoji_events, size: 40, color: Colors.teal.shade700),
-                            const SizedBox(height: 8),
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              description,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    final data = resp.data;
+    final raw = data == null
+        ? <dynamic>[]
+        : (data is Map && data['badges'] is List)
+            ? (data['badges'] as List)
+            : (data is List)
+                ? data
+                : <dynamic>[];
+
+    final list = raw
+        .whereType<Map<String, dynamic>>()
+        .map((j) => userbadge.Badge.fromJson(j))
+        .toList();
+
+    return ApiResponse.success(list);
   }
 }
