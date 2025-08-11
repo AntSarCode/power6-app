@@ -4,11 +4,11 @@ from datetime import datetime
 from enum import Enum
 
 class Tier(str, Enum):
-    free = "free"
-    plus = "plus"
-    pro = "pro"
-    elite = "elite"
-    admin = "admin"
+    free = "Free"
+    plus = "Plus"
+    pro = "Pro"
+    elite = "Elite"
+    admin = "Admin"
 
 class TaskBase(BaseModel):
     title: str
@@ -49,7 +49,7 @@ class UserRead(BaseModel):
     is_admin: bool
     created_at: datetime
     updated_at: datetime
-    tier: Tier  # <- Prefer using Enum instead of str
+    tier: Tier
 
     class Config:
         orm_mode = True
@@ -57,12 +57,11 @@ class UserRead(BaseModel):
             datetime: lambda v: v.isoformat()
         }
 
-
 class Token(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: Optional[str] = None
     token_type: str
-    user: str
+    user: Optional[str] = None
 
 class LoginRequest(BaseModel):
     username: Optional[str] = None

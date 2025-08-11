@@ -5,6 +5,7 @@ import 'app.dart';
 import 'state/app_state.dart';
 import 'services/streak_service.dart';
 import 'services/task_service.dart';
+import 'screens/signup_screen.dart'; // added
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,15 @@ void main() async {
         Provider<StreakService>(create: (_) => StreakService()),
         Provider<TaskService>(create: (_) => TaskService()),
       ],
-      child: const PowerApp(),
+      child: MaterialApp(
+        title: 'Power6',
+        theme: ThemeData(primarySwatch: Colors.teal),
+        routes: {
+          '/signup': (ctx) => const SignUpScreen(),
+          // add other routes here (e.g., '/home': (ctx) => const HomeScreen(), etc.)
+        },
+        home: const PowerApp(),
+      ),
     ),
   );
 }

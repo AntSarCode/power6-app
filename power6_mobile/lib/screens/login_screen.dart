@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import './signup_screen.dart';
 import '../state/app_state.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -97,6 +98,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Log In',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        SignUpScreen.routeName,
+                      ),
+                      child: const Text('Sign up'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

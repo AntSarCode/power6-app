@@ -1,6 +1,14 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
 from app.models.badge import Badge
-from app.database import SessionLocal
+from sqlalchemy.orm import sessionmaker
+import os
+
+# Use live DB URL from environment variables
+DATABASE_URL = os.getenv("LIVE_DATABASE_URL", "")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 BADGE_DATA = [
     {"title": "Starter", "description": "Complete your first task", "icon_uri": "starter.png"},
@@ -32,8 +40,8 @@ def seed_badges():
                     icon_uri=badge["icon_uri"]
                 ))
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error seeding badges: {e}")
     finally:
         db.close()
 
