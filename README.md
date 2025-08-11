@@ -1,6 +1,6 @@
 # Power6
 
-Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, badge rewards, subscription-based feature gating, and backend syncing.
+Power6 is a full-stack productivity journal app built to help users set and complete six priority-ranked tasks each day. It features streak tracking, task history, badge rewards, subscription-based feature gating, live database syncing, and admin-level management.
 
 ---
 
@@ -11,22 +11,24 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 - **Task Review**: Check off completed tasks and store history
 - **Streak Tracker**: Tracks consecutive days of full task completion
 - **Timeline View** *(Plus/Pro Only)*: View past daily task completions
-- **Stats Dashboard** *(Pro Only)*: Visualize performance over time
-- **Badges**: Earn milestones based on behavior
+- **Stats Dashboard** *(Pro/Elite Only)*: Visualize performance over time
+- **Badges**: Earn milestones based on behavior with live backend seeding
 - **Subscription Tiers**: Free, Plus, Pro, Elite — gated features
+- **Admin Controls** *(Elite/Admin Only)*: Full user and badge management
 
 ### 🔁 Backend Sync
-- Task and user data saved to backend via FastAPI
-- Tasks pulled on next login or device
+- Task, user, and badge data saved to live PostgreSQL via FastAPI
+- Multi-device sync with JWT-based authentication
 - Duplicate task prevention per day
 - Automatic database schema creation at startup
-- Badge sync endpoint
+- Superuser creation support via secure script or direct DB insert
 
 ### 🔐 Auth & User Management
 - Token-based authentication (JWT)
 - User-specific data handling
 - Tier management (Free, Plus, Pro, Elite, Admin)
-- ISO-formatted datetime serialization for all user/task responses
+- Password hashing (bcrypt) for secure storage
+- ISO-formatted datetime serialization for all responses
 
 ---
 
@@ -34,21 +36,22 @@ Power6 is a full-stack productivity journal app built to help users set and comp
 
 ### Frontend (Flutter)
 - Flutter SDK (web and desktop)
-- Provider or ChangeNotifier for state
+- Provider/ChangeNotifier for state management
 - SharedPreferences for local persistence
+- Deployed to Firebase Hosting
 
 ### Backend (FastAPI)
 - FastAPI + Pydantic v2
 - SQLAlchemy ORM
-- SQLite (default) or PostgreSQL (preferred)
-- Full CRUD for tasks
-- Live tier-aware auth system
-- Stripe subscription hooks (WIP)
+- PostgreSQL (production) / SQLite (local dev)
+- Full CRUD for tasks and badges
+- Stripe subscription integration (WIP)
+- Deployed to Render
 
 ### Dev Tools
 - VS Code / Android Studio
 - GitHub for version control
-- Platform support: Web, Windows
+- Platform support: Web, Windows, macOS (planned)
 
 ---
 
@@ -62,13 +65,13 @@ cd power6
 
 ### 2. Backend Setup
 ```bash
-cd Power6Backend
+cd power6_backend
 uvicorn main:app --reload
 ```
 
 ### 3. Frontend Setup (Flutter)
 ```bash
-cd Power6Mobile/power6_mobile
+cd power6_mobile
 flutter run -d chrome
 ```
 
@@ -78,36 +81,31 @@ flutter run -d chrome
 
 ## 💳 Subscription Tiers
 | Feature                  | Free | Plus | Pro  | Elite |
-|--------------------------|------|------|------|--------|
-| Task Input / Review      | ✅   | ✅   | ✅   | ✅     |
-| Streak Tracker           | ✅   | ✅   | ✅   | ✅     |
-| Timeline View            | ❌   | ✅   | ✅   | ✅     |
-| Stats Dashboard          | ❌   | ❌   | ✅   | ✅     |
-| Badge Rewards            | ❌   | ✅   | ✅   | ✅     |
-| Multi-device Sync        | ❌   | ✅   | ✅   | ✅     |
-| Admin Features           | ❌   | ❌   | ❌   | ✅     |
+|--------------------------|------|------|------|-------|
+| Task Input / Review      | ✅   | ✅   | ✅   | ✅    |
+| Streak Tracker           | ✅   | ✅   | ✅   | ✅    |
+| Timeline View            | ❌   | ✅   | ✅   | ✅    |
+| Stats Dashboard          | ❌   | ❌   | ✅   | ✅    |
+| Badge Rewards            | ❌   | ✅   | ✅   | ✅    |
+| Multi-device Sync        | ❌   | ✅   | ✅   | ✅    |
+| Admin Features           | ❌   | ❌   | ❌   | ✅    |
 
 ---
 
-## 📁 Project Structure (Flutter + FastAPI)
+## 📁 Project Structure
 ```
 .
-├── Power6Mobile            # Flutter frontend (web + desktop)
-│   ├── lib
-│   │   ├── screens         # UI screens
-│   │   ├── widgets         # Reusable components
-│   │   ├── utils           # Helpers (date, error handling)
-│   │   ├── services        # API interaction
-│   │   ├── state           # AppState (provider)
-│   │   └── models          # Data models
+├── power6_mobile          # Flutter frontend
+│   ├── lib                # UI screens, widgets, services, state, models
 │   └── pubspec.yaml
 │
-├── Power6Backend           # FastAPI backend
+├── power6_backend         # FastAPI backend
 │   └── app
-│       ├── models          # SQLAlchemy models
-│       ├── routes          # FastAPI route definitions
-│       ├── schemas         # Pydantic schemas
-│       └── main.py         # Entrypoint
+│       ├── models         # SQLAlchemy models
+│       ├── routes         # FastAPI route definitions
+│       ├── schemas        # Pydantic schemas
+│       ├── core           # Security, config
+│       └── main.py        # Entrypoint
 ```
 
 ---
@@ -116,13 +114,13 @@ flutter run -d chrome
 - ✅ Phase 1: Core UI, routing, local logic
 - ✅ Phase 2: Task CRUD + Auth integration
 - ✅ Phase 3: Subscription UI + tier gating
-- ✅ Phase 4: Final polish + responsive design + badge feature
-- 🔜 Phase 5: Deployment and feedback loop
+- ✅ Phase 4: Badges, admin features, deployment
+- 🔜 Phase 5: Feedback loop + Stripe integration
 
 ---
 
 ## 📬 Feedback
-We welcome contributions, feedback, or ideas! Feel free to open an issue or contact the team.
+We welcome contributions, feedback, or ideas! Open an issue or contact the team.
 
 ---
 
@@ -131,4 +129,4 @@ MIT License — build, fork, and use freely.
 
 ---
 
-Power6 is our first full-stack Flutter x FastAPI productivity build. Thanks for checking it out!
+Power6 is our first full-stack Flutter x FastAPI productivity build, now running in production with live superuser capabilities.

@@ -27,6 +27,14 @@ Thumbs.db
 /power6_mobile/build/
 /power6_mobile/.dart_tool/
 /power6_mobile/.dart_tool/chrome-device/
+/power6_mobile/coverage/
+
+# Platform folders (ignore if web-only for this repo)
+/power6_mobile/ios/
+/power6_mobile/android/
+/power6_mobile/macos/
+/power6_mobile/windows/
+/power6_mobile/linux/
 
 # Generated assets
 **/gen/
@@ -40,14 +48,20 @@ Thumbs.db
 *.pyo
 *.pyd
 *.db
+*.sqlite3
 .env
+.env.*
 .venv/
 env/
 venv/
+create_superuser.py
 
 # Byte-compiled / optimized
 *.egg-info/
 .eggs/
+
+# Alembic (keep migrations folder, but ignore cache/pyc)
+app/alembic/__pycache__/
 
 # ------------------------------
 # Firebase
@@ -70,4 +84,3 @@ yarn-error.log
 # ------------------------------
 ehthumbs.db
 Icon?
-
