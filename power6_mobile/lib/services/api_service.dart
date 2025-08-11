@@ -1,43 +1,83 @@
+import 'dart:convert';
+import 'dart:async';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../models/badge.dart' as badge_model;
 import 'api_response.dart';
 
+/// API service for Power6 app.
 class ApiService {
-  Future<ApiResponse> get(String path, {String? token}) async {
-    // Replace this with actual HTTP request logic
-    // This is a stub for the sake of this patch
-    return ApiResponse.success({
-      'badges': [
-        {
-          'id': 1,
-          'title': 'First Task Complete',
-          'description': 'Completed your first task!',
-          'achieved': true
-        },
-        {
-          'id': 2,
-          'title': 'Streak Starter',
-          'description': 'Logged 3 days in a row',
-          'achieved': false
+  static const String _baseUrl = 'https://power6-backend.onrender.com';
+  static const Duration _timeout = Duration(seconds: 15);
+
+  Future<ApiResponse<dynamic>> get(String path, {String? token}) async {
+    try {
+      final uri = Uri.parse(
+        path.startsWith('http') ? path : '$_baseUrl${path.startsWith('/') ? path : '/$path'}',
+      );
+
+      final res = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(_timeout);
+
+      if (res.statusCode == 204 || res.body.isEmpty) {
+        return ApiResponse.success(null);
+      }
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        try {
+          return ApiResponse.success(jsonDecode(res.body));
+        } catch (_) {
+          return ApiResponse.success(null);
         }
-      ]
-    });
+      }
+
+      return ApiResponse.failure('Request failed (${res.statusCode})');
+    } on TimeoutException {
+      return ApiResponse.failure('Network timeout. Please try again.');
+    } catch (_) {
+      return ApiResponse.failure('Network error. Please check connection.');
+    }
   }
 
   Future<ApiResponse<List<badge_model.Badge>>> fetchUserBadges(String token) async {
-    final response = await get('/badges/me', token: token);
-    if (response.isSuccess) {
-      final badgeList = (response.data!['badges'] ?? response.data) as List<dynamic>;
-      final badges = badgeList.map((json) => badge_model.Badge.fromJson(json)).toList();
-      return ApiResponse.success(badges);
-    } else {
-      return ApiResponse.failure(response.error ?? 'Unknown error');
+    if (token.isEmpty) {
+      return ApiResponse.success(<badge_model.Badge>[]);
     }
+
+    final response = await get('/api/dashboard/badges', token: token);
+    if (!response.isSuccess) {
+      return ApiResponse.failure(response.error ?? 'Unable to load badges');
+    }
+
+    final data = response.data;
+    final rawList = data == null
+        ? <dynamic>[]
+        : (data is Map && data['badges'] is List)
+            ? (data['badges'] as List)
+            : (data is List)
+                ? data
+                : <dynamic>[];
+
+    final badges = rawList
+        .whereType<Map<String, dynamic>>()
+        .map((j) => badge_model.Badge.fromJson(j))
+        .toList();
+
+    return ApiResponse.success(badges);
   }
 }
 
+/// Badge display screen.
 class BadgeScreen extends StatefulWidget {
   const BadgeScreen({super.key});
 
@@ -46,28 +86,31 @@ class BadgeScreen extends StatefulWidget {
 }
 
 class _BadgeScreenState extends State<BadgeScreen> {
-  List<badge_model.Badge> _badges = [];
-  bool _loading = true;
-  String? _error;
+  Future<List<badge_model.Badge>> _badges = Future.value(<badge_model.Badge>[]);
+  String? _softError;
 
   @override
   void initState() {
     super.initState();
-    _fetchBadges();
+    _load();
   }
 
-  void _fetchBadges() async {
-    final token = context.read<AppState>().accessToken;
-    final result = await ApiService().fetchUserBadges(token ?? '');
+  Future<void> _load() async {
+    setState(() => _softError = null);
+    final token = context.read<AppState>().accessToken ?? '';
+
+    if (token.isEmpty) {
+      setState(() => _badges = Future.value(<badge_model.Badge>[]));
+      return;
+    }
+
+    final result = await ApiService().fetchUserBadges(token);
     if (result.isSuccess) {
-      setState(() {
-        _badges = result.data!;
-        _loading = false;
-      });
+      setState(() => _badges = Future.value(result.data ?? <badge_model.Badge>[]));
     } else {
       setState(() {
-        _error = result.error;
-        _loading = false;
+        _softError = result.error ?? 'Badges currently unavailable.';
+        _badges = Future.value(<badge_model.Badge>[]);
       });
     }
   }
@@ -80,43 +123,74 @@ class _BadgeScreenState extends State<BadgeScreen> {
     if (!isPro) {
       return Scaffold(
         appBar: AppBar(title: const Text('Badges')),
-        body: const Center(
-          child: Text("Upgrade to Pro to unlock badges!"),
-        ),
-      );
-    }
-
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Badges')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Badges')),
-        body: Center(child: Text(_error!)),
+        body: const Center(child: Text('Upgrade to Pro to unlock badges!')),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Badges')),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _badges.length,
-        itemBuilder: (context, index) {
-          final badge = _badges[index];
-          final icon = badge.achieved
-              ? Icons.emoji_events
-              : Icons.lock_outline;
+      appBar: AppBar(title: const Text('🏅 Your Badges')),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: FutureBuilder<List<badge_model.Badge>>(
+          future: _badges,
+          initialData: const <badge_model.Badge>[],
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          return ListTile(
-            title: Text(badge.title),
-            subtitle: Text(badge.description),
-            trailing: Icon(icon, color: badge.achieved ? Colors.deepPurple : Colors.grey),
-          );
-        },
+            final items = snapshot.data ?? <badge_model.Badge>[];
+
+            if (items.isEmpty) {
+              final title = _softError == null ? 'No badges yet.' : 'Badges temporarily unavailable';
+              final subtitle = _softError == null
+                  ? 'Complete tasks and build streaks to earn achievements.'
+                  : _softError!;
+
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(subtitle, textAlign: TextAlign.center),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final b = items[i];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    leading: Icon(b.achieved ? Icons.emoji_events : Icons.lock_outline),
+                    title: Text(b.title),
+                    subtitle: Text(b.description),
+                    trailing: Icon(
+                      Icons.check_circle,
+                      color: b.achieved ? Colors.teal : Colors.grey,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
