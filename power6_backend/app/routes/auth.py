@@ -83,7 +83,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    identifier = login_data.username or login_data.email
+    # Accept identifier from the unified field (schema handles aliases)
+    identifier = login_data.username_or_email
     user = authenticate_user(db, identifier, login_data.password)
     if not user:
         raise HTTPException(
