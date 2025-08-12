@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';                   // + for kReleaseMode
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_constants.dart';
@@ -10,14 +11,32 @@ class AuthService {
 
   AuthService({http.Client? httpClient}) : client = httpClient ?? http.Client();
 
-  // Helper to join base + endpoint
-  Uri _u(String endpoint) => Uri.parse('${ApiConstants.baseUrl}$endpoint');
+  // Resolve base URL:
+  // 1) --dart-define=BASE_URL takes priority
+  // 2) Release builds default to your live backend
+  // 3) Otherwise use whatever is in ApiConstants.baseUrl (usually localhost for dev)
+  String get _baseUrl {
+    const env = String.fromEnvironment('BASE_URL', defaultValue: '');
+    if (env.isNotEmpty) return env;
+    if (kReleaseMode) return 'https://power6-backend.onrender.com'; // <- Render URL
+    return ApiConstants.baseUrl;
+  }
+
+  // Safe join helper (handles trailing/leading slashes; accepts full URLs too)
+  String _join(String base, String endpoint) {
+    if (endpoint.startsWith('http')) return endpoint;
+    final b = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final e = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    return '$b$e';
+  }
+
+  Uri _u(String endpoint) => Uri.parse(_join(_baseUrl, endpoint));
 
   /// Login and persist tokens
   Future<ApiResponse<String>> login(String username, String password) async {
     try {
       final res = await client.post(
-        _u(ApiConstants.login),
+        _u(ApiConstants.login), // e.g. '/auth/login'
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
       );
@@ -60,7 +79,7 @@ class AuthService {
   }) async {
     try {
       final res = await client.post(
-        _u(ApiConstants.register), // define this as '/auth/register' in ApiConstants
+        _u(ApiConstants.register), // e.g. '/auth/register'
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
@@ -77,7 +96,6 @@ class AuthService {
         }
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', access);
-        // Optional refresh
         final refresh = data['refresh_token'] as String?;
         if (refresh != null) {
           await prefs.setString('refresh_token', refresh);
@@ -107,7 +125,7 @@ class AuthService {
       if (token == null) return ApiResponse.failure('No token found');
 
       final res = await client.get(
-        _u(ApiConstants.currentUser),
+        _u(ApiConstants.currentUser), // e.g. '/users/me'
         headers: {'Authorization': 'Bearer $token'},
       );
 

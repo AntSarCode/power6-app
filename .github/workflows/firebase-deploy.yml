@@ -26,9 +26,9 @@ jobs:
         working-directory: power6_mobile
         run: flutter pub get
 
-      - name: Build Flutter Web (release)
+      - name: Build Flutter Web (release with prod API URL)
         working-directory: power6_mobile
-        run: flutter build web --release
+        run: flutter build web --release --dart-define=BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Verify build output
         run: |
