@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -42,27 +43,26 @@ def create_refresh_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
 
-def get_user_by_username(db: Session, username: str) -> Optional[User]:
-    return db.query(User).filter(User.username == username).first()
+def get_user_by_identifier(db: Session, identifier: str) -> Optional[User]:
+    ident = identifier.strip()
+    return db.query(User).filter(
+        or_(
+            func.lower(User.username) == ident.lower(),
+            func.lower(User.email) == ident.lower()
+        )
+    ).first()
 
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    return db.query(User).filter(User.email == email).first()
-
-def authenticate_user(db: Session, username: Optional[str], email: Optional[str], password: str) -> Optional[User]:
-    user = None
-    if username:
-        user = get_user_by_username(db, username)
-    elif email:
-        user = get_user_by_email(db, email)
+def authenticate_user(db: Session, identifier: str, password: str) -> Optional[User]:
+    user = get_user_by_identifier(db, identifier)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    if get_user_by_username(db, user_data.username):
+    if get_user_by_identifier(db, user_data.username):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-    if get_user_by_email(db, user_data.email):
+    if get_user_by_identifier(db, user_data.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
     hashed_password = get_password_hash(user_data.password)
@@ -83,7 +83,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    user = authenticate_user(db, login_data.username, login_data.email, login_data.password)
+    identifier = login_data.username or login_data.email
+    user = authenticate_user(db, identifier, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -110,7 +111,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
     new_access_token = create_access_token(data={"sub": username})
-    if not get_user_by_username(db, username):
+    if not get_user_by_identifier(db, username):
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "access_token": new_access_token,
@@ -124,7 +125,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         username: str = payload.get("sub")
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token payload")
-        user = get_user_by_username(db, username)
+        user = get_user_by_identifier(db, username)
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         return user
