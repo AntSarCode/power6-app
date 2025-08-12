@@ -1,72 +1,51 @@
-from pydantic import BaseModel
-from typing import Optional
+from __future__ import annotations
 from datetime import datetime
 from enum import Enum
+from typing import Optional
+from pydantic import BaseModel, Field, AliasChoices, field_validator, EmailStr
 
 class Tier(str, Enum):
-    free = "Free"
-    plus = "Plus"
-    pro = "Pro"
-    elite = "Elite"
-    admin = "Admin"
+    Free = "Free"
+    Pro = "Pro"
+    Elite = "Elite"
 
-class TaskBase(BaseModel):
-    title: str
-    notes: Optional[str] = None
-    priority: int
-    scheduled_for: datetime
-    completed: bool = False
-    streak_bound: bool = False
-    completed_at: Optional[datetime] = None
+class LoginRequest(BaseModel):
+    """Accept multiple keys for identifier (username/email)."""
+    username_or_email: str = Field(
+        ..., validation_alias=AliasChoices("username_or_email", "username", "email", "identifier")
+    )
+    password: str
 
-class TaskCreate(TaskBase):
-    pass
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
-class TaskUpdate(TaskBase):
-    pass
+    @field_validator("username_or_email", "password", mode="before")
+    def _strip(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
-class TaskRead(TaskBase):
-    id: int
-    user_id: int
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    refresh_token: Optional[str] = None
 
 class UserCreate(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
-    tier: Tier = Tier.free
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("username", "email", "password", mode="before")
+    def _strip_usercreate(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
 class UserRead(BaseModel):
     id: int
     username: str
-    email: str
-    is_admin: bool
-    created_at: datetime
-    updated_at: datetime
-    tier: Tier
-
-    class Config:
-        orm_mode = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
-class Token(BaseModel):
-    access_token: str
-    refresh_token: Optional[str] = None
-    token_type: str
-    user: Optional[str] = None
-
-class LoginRequest(BaseModel):
-    username: Optional[str] = None
-    email: Optional[str] = None
-    password: str
+    email: EmailStr
+    tier: Tier = Tier.Free
+    is_admin: bool = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class UserTierUpdate(BaseModel):
     tier: Tier
