@@ -18,6 +18,7 @@ packaging
 pydantic
 pydantic-core
 pydantic-settings
+email-validator
 pyyaml
 
 # Background / scheduling
