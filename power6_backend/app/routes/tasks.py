@@ -7,7 +7,7 @@ from app.models.models import Task as TaskModel
 from app.models.models import User
 from app.database import get_db
 from app.routes.auth import get_current_user
-from app.schemas.schemas import TaskCreate, TaskRead
+from app.schemas import TaskCreate, TaskRead
 
 router = APIRouter(
     prefix="/tasks",

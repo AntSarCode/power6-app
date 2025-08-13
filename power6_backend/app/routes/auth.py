@@ -8,7 +8,7 @@ from typing import Optional
 import os
 
 from app.models.models import User
-from app.schemas.schemas import (
+from app.schemas import (
     UserCreate,
     UserRead,
     Token,
