@@ -1,7 +1,14 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List
+from __future__ import annotations
 
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+# -----------------------------
+# Badge Schemas (Pydantic v2)
+# -----------------------------
 
 class BadgeBase(BaseModel):
     name: str
@@ -17,15 +24,15 @@ class BadgeCreate(BadgeBase):
 class BadgeRead(BadgeBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    # Pydantic v2 replacement for orm_mode=True
+    model_config = {"from_attributes": True}
 
 
 class BadgeUpdate(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    icon_uri: Optional[str]
-    unlock_condition: Optional[str]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon_uri: Optional[str] = None
+    unlock_condition: Optional[str] = None
 
 
 class UserBadgeBase(BaseModel):
@@ -42,13 +49,12 @@ class UserBadgeRead(UserBadgeBase):
     unlocked_at: datetime
     badge: Optional[BadgeRead] = None
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 
 class UserBadgeUpdate(BaseModel):
-    unlocked_at: Optional[datetime]
-    badge_id: Optional[int]
+    unlocked_at: Optional[datetime] = None
+    badge_id: Optional[int] = None
 
 
 class BadgeAssignRequest(BaseModel):
@@ -56,13 +62,9 @@ class BadgeAssignRequest(BaseModel):
     badge_id: int
     note: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class BadgeAssignResult(BaseModel):
-    new_badges: List[UserBadgeRead] = []
+    new_badges: list[UserBadgeRead] = Field(default_factory=list)
     message: str = "Badges evaluated and assigned successfully."
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}

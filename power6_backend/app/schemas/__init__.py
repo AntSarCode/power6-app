@@ -1,38 +1,49 @@
+# Package export hub for app.schemas
+# Prefer: from app.schemas import <Name>
+
 from .schemas import (
     UserCreate,
     UserRead,
-    Token,
+    UserTierUpdate,
     LoginRequest,
+    Token,
+    TaskBase,
     TaskCreate,
-    TaskRead,
     TaskUpdate,
-    UserTierUpdate
+    TaskRead,
 )
 
-from .badge import (
-    BadgeCreate,
-    BadgeRead,
-    UserBadgeCreate,
-    UserBadgeRead,
-    UserBadgeUpdate,
-    BadgeAssignRequest,
-    BadgeAssignResult
-)
+try:
+    from .badge import (
+        BadgeCreate,
+        BadgeRead,
+        UserBadgeCreate,
+        UserBadgeRead,
+        UserBadgeUpdate,
+        BadgeAssignRequest,
+        BadgeAssignResult,
+    )
+    _BADGE_EXPORTS = [
+        "BadgeCreate",
+        "BadgeRead",
+        "UserBadgeCreate",
+        "UserBadgeRead",
+        "UserBadgeUpdate",
+        "BadgeAssignRequest",
+        "BadgeAssignResult",
+    ]
+except (ImportError, ModuleNotFoundError):
+    _BADGE_EXPORTS = []
 
 __all__ = [
     "UserCreate",
     "UserRead",
-    "Token",
-    "LoginRequest",
-    "TaskCreate",
-    "TaskRead",
-    "TaskUpdate",
     "UserTierUpdate",
-    "BadgeCreate",
-    "BadgeRead",
-    "UserBadgeCreate",
-    "UserBadgeRead",
-    "UserBadgeUpdate",
-    "BadgeAssignRequest",
-    "BadgeAssignResult"
+    "LoginRequest",
+    "Token",
+    "TaskBase",
+    "TaskCreate",
+    "TaskUpdate",
+    "TaskRead",
+    *_BADGE_EXPORTS,
 ]

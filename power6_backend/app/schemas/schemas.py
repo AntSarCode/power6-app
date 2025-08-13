@@ -1,51 +1,95 @@
 from __future__ import annotations
+
 from datetime import datetime
-from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, AliasChoices, field_validator, EmailStr
 
-class Tier(str, Enum):
-    Free = "Free"
-    Pro = "Pro"
-    Elite = "Elite"
+from pydantic import BaseModel, EmailStr, field_validator
 
-class LoginRequest(BaseModel):
-    """Accept multiple keys for identifier (username/email)."""
-    username_or_email: str = Field(
-        ..., validation_alias=AliasChoices("username_or_email", "username", "email", "identifier")
-    )
-    password: str
-
-    model_config = {"from_attributes": True, "populate_by_name": True}
-
-    @field_validator("username_or_email", "password", mode="before")
-    def _strip(cls, v):
-        return v.strip() if isinstance(v, str) else v
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    refresh_token: Optional[str] = None
+# -----------------------------
+# User Schemas
+# -----------------------------
 
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
 
-    model_config = {"from_attributes": True}
+    # normalize & trim inputs
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, v: str) -> str:
+        return v.strip()
 
-    @field_validator("username", "email", "password", mode="before")
-    def _strip_usercreate(cls, v):
-        return v.strip() if isinstance(v, str) else v
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: EmailStr) -> EmailStr:
+        # EmailStr already validates; ensure lowercase + trim
+        return EmailStr(str(v).strip().lower())
 
 class UserRead(BaseModel):
     id: int
     username: str
     email: EmailStr
-    tier: Tier = Tier.Free
-    is_admin: bool = False
-    created_at: Optional[datetime] = None
+    tier: str
+    is_admin: bool
+    created_at: datetime
     updated_at: Optional[datetime] = None
 
+    # Pydantic v2 replacement for orm_mode=True
+    model_config = {"from_attributes": True}
+
 class UserTierUpdate(BaseModel):
-    tier: Tier
+    tier: str
+
+class LoginRequest(BaseModel):
+    username_or_email: str
+    password: str
+
+    @field_validator("username_or_email")
+    @classmethod
+    def normalize_login_key(cls, v: str) -> str:
+        return v.strip().lower()
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# -----------------------------
+# Task Schemas
+# -----------------------------
+
+class TaskBase(BaseModel):
+    title: str
+    notes: Optional[str] = None
+    priority: int = 0
+    scheduled_for: datetime
+    streak_bound: bool = False
+
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str) -> str:
+        v2 = v.strip()
+        if not v2:
+            raise ValueError("title cannot be empty")
+        return v2
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    notes: Optional[str] = None
+    priority: Optional[int] = None
+    scheduled_for: Optional[datetime] = None
+    completed: Optional[bool] = None
+    completed_at: Optional[datetime] = None
+    streak_bound: Optional[bool] = None
+
+class TaskRead(TaskBase):
+    id: int
+    user_id: int
+    completed: bool = False
+    completed_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
