@@ -12,17 +12,16 @@ from app.schemas import (
     UserCreate,
     UserRead,
     Token,
-    LoginRequest
+    LoginRequest,
 )
 from app.database import get_db
 from app.utils.hash import get_password_hash, verify_password
 
 router = APIRouter(
     prefix="/auth",
-    tags=["Authentication"]
+    tags=["Authentication"],
 )
 
-# === JWT CONFIG ===
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_dev_secret")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "fallback_refresh_secret")
 ALGORITHM = "HS256"
@@ -44,13 +43,17 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
 
 def get_user_by_identifier(db: Session, identifier: str) -> Optional[User]:
-    ident = identifier.strip()
-    return db.query(User).filter(
-        or_(
-            func.lower(User.username) == ident.lower(),
-            func.lower(User.email) == ident.lower()
+    ident = identifier.strip().lower()
+    return (
+        db.query(User)
+        .filter(
+            or_(
+                func.lower(User.username) == ident,
+                func.lower(User.email) == ident,
+            )
         )
-    ).first()
+        .first()
+    )
 
 def authenticate_user(db: Session, identifier: str, password: str) -> Optional[User]:
     user = get_user_by_identifier(db, identifier)
@@ -60,18 +63,21 @@ def authenticate_user(db: Session, identifier: str, password: str) -> Optional[U
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    if get_user_by_identifier(db, user_data.username):
+    username_norm = user_data.username.strip()
+    email_norm = user_data.email.strip().lower()
+
+    if db.query(User).filter(func.lower(User.username) == username_norm.lower()).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-    if get_user_by_identifier(db, user_data.email):
+    if db.query(User).filter(func.lower(User.email) == email_norm).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
-        username=user_data.username.strip(),
-        email=user_data.email.strip().lower(),
+        username=username_norm,
+        email=email_norm,
         hashed_password=hashed_password,
         tier="Free",
-        is_admin=False
+        is_admin=False,
     )
     db.add(new_user)
     db.commit()
@@ -83,8 +89,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
-    # Accept identifier from the unified field (schema handles aliases)
-    identifier = login_data.username_or_email
+    identifier = login_data.username_or_email.strip().lower()
     user = authenticate_user(db, identifier, login_data.password)
     if not user:
         raise HTTPException(
@@ -111,9 +116,10 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    new_access_token = create_access_token(data={"sub": username})
     if not get_user_by_identifier(db, username):
         raise HTTPException(status_code=404, detail="User not found")
+
+    new_access_token = create_access_token(data={"sub": username})
     return {
         "access_token": new_access_token,
         "refresh_token": token,
