@@ -129,7 +129,8 @@ class AuthService {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
         final user = User.fromJson(data);
-        await prefs.setBool('is_superuser', user.isSuperuser);
+        await prefs.setBool('is_admin', user.isAdmin);
+        await prefs.setBool('is_superuser', user.isAdmin);
         return ApiResponse.success(user);
       }
 
@@ -149,6 +150,7 @@ class AuthService {
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
     await prefs.remove('is_superuser');
+    await prefs.remove('is_admin');
   }
 
   Future<bool> isAuthenticated() async {
@@ -159,6 +161,8 @@ class AuthService {
 
   Future<bool> isSuperuser() async {
     final prefs = await SharedPreferences.getInstance();
+    final adminFlag = prefs.getBool('is_admin');
+    if (adminFlag != null) return adminFlag;
     return prefs.getBool('is_superuser') ?? false;
   }
 
