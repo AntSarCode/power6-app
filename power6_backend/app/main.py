@@ -1,55 +1,83 @@
+from __future__ import annotations
+
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-import os
 
-from app.routes import api_router, stripe
-from app.database import Base, engine
+# If you use SQLAlchemy Base/engine and want to ensure tables exist on startup
+try:
+    from app.database import Base, engine  # optional; ignore if you use Alembic
+except Exception:  # pragma: no cover
+    Base = None
+    engine = None
 
-# App metadata from .env
-APP_NAME = os.getenv("APP_NAME", "Power6 API")
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
-ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "*")
+# Your top-level API router should already mount sub-routers (auth, stripe, etc.)
+try:
+    from app.routes import api_router
+except Exception as e:  # pragma: no cover
+    raise RuntimeError("Could not import app.api.api_router: %r" % e)
 
-app = FastAPI(
-    title=APP_NAME,
-    description="Backend for the Power6 productivity app",
-    version="1.0.0",
-)
 
-# Recreate database schema
-Base.metadata.create_all(bind=engine)
+def _build_allowed_origins() -> list[str]:
+    """Compute CORS allowlist.
 
-# Build CORS allowlist based on ENVIRONMENT and ALLOWED_ORIGINS
-raw_origins = [o.strip() for o in ALLOWED_ORIGINS_ENV.split(",") if o.strip()]
+    Priority:
+      1) ALLOWED_ORIGINS env var (comma-separated)
+      2) Production defaults (Firebase + custom domain)
+      3) Dev wildcard '*'
+    """
+    # If explicitly provided, trust env var
+    env_origins = os.getenv("ALLOWED_ORIGINS")
+    if env_origins:
+        return [o.strip() for o in env_origins.split(",") if o.strip()]
 
-if ENVIRONMENT == "development":
-    # In dev, allow '*' unless specific origins are provided
-    allow_origins = raw_origins if raw_origins and raw_origins != ["*"] else ["*"]
-else:
-    # In production, require explicit origins; default to the primary domain if none supplied
-    allow_origins = raw_origins or ["https://power6.app"]
+    # Otherwise choose sane defaults based on environment
+    environment = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "production")).lower()
 
-app.add_middleware(
-    CORSMiddleware,  # type: ignore
-    allow_origins=allow_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    prod_defaults = [
+        "https://power6-app.web.app",
+        "https://power6-app.firebaseapp.com",
+        "https://power6.app",
+        "https://www.power6.app",
+    ]
 
-# Static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+    if environment in {"prod", "production", "live"}:
+        return prod_defaults
 
-# Routers
-app.include_router(api_router)
-app.include_router(stripe.router, prefix="/stripe")  # Registered stripe routes
+    # Development fallback: allow all
+    return ["*"]
 
-@app.get("/")
-def read_root():
-    return {"msg": f"Welcome to the {APP_NAME}"}
 
-@app.get("/favicon.ico", include_in_schema=False)
-def favicon():
-    return FileResponse("static/favicon.ico")
+def create_app() -> FastAPI:
+    app = FastAPI(title="Power6 Backend", version=os.getenv("APP_VERSION", "0.1.0"))
+
+    # --- CORS ---
+    origins = _build_allowed_origins()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],  # includes Authorization, Content-Type, etc.
+        expose_headers=["*"],
+    )
+
+    # --- Routers ---
+    app.include_router(api_router)
+
+    # --- Optional: ensure tables exist (skip if using Alembic migrations) ---
+    if Base is not None and engine is not None:
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception:
+            # Don't crash the process if migrations handle this
+            pass
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    return app
+
+
+app = create_app()
