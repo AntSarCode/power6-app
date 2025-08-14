@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';                   // + for kReleaseMode
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_constants.dart';
@@ -11,18 +11,13 @@ class AuthService {
 
   AuthService({http.Client? httpClient}) : client = httpClient ?? http.Client();
 
-  // Resolve base URL:
-  // 1) --dart-define=BASE_URL takes priority
-  // 2) Release builds default to your live backend
-  // 3) Otherwise use whatever is in ApiConstants.baseUrl (usually localhost for dev)
   String get _baseUrl {
     const env = String.fromEnvironment('BASE_URL', defaultValue: '');
     if (env.isNotEmpty) return env;
-    if (kReleaseMode) return 'https://power6-backend.onrender.com'; // <- Render URL
+    if (kReleaseMode) return 'https://power6-backend.onrender.com';
     return ApiConstants.baseUrl;
   }
 
-  // Safe join helper (handles trailing/leading slashes; accepts full URLs too)
   String _join(String base, String endpoint) {
     if (endpoint.startsWith('http')) return endpoint;
     final b = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
@@ -32,13 +27,15 @@ class AuthService {
 
   Uri _u(String endpoint) => Uri.parse(_join(_baseUrl, endpoint));
 
-  /// Login and persist tokens
-  Future<ApiResponse<String>> login(String username, String password) async {
+  Future<ApiResponse<String>> login(String usernameOrEmail, String password) async {
     try {
       final res = await client.post(
-        _u(ApiConstants.login), // e.g. '/auth/login'
+        _u(ApiConstants.login),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({
+          'username_or_email': usernameOrEmail.trim(),
+          'password': password
+        }),
       );
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -58,7 +55,6 @@ class AuthService {
         return ApiResponse.success(access);
       }
 
-      // Try to surface server error detail
       String msg = 'Login failed: ${res.statusCode}';
       try {
         final body = jsonDecode(res.body);
@@ -71,7 +67,6 @@ class AuthService {
     }
   }
 
-  /// Register + auto-login (stores token like login)
   Future<ApiResponse<String>> register({
     required String username,
     required String email,
@@ -79,12 +74,12 @@ class AuthService {
   }) async {
     try {
       final res = await client.post(
-        _u(ApiConstants.register), // e.g. '/auth/register'
+        _u(ApiConstants.register),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': username,
-          'email': email,
-          'password': password,
+          'username': username.trim(),
+          'email': email.trim(),
+          'password': password
         }),
       );
 
@@ -117,7 +112,6 @@ class AuthService {
     }
   }
 
-  /// Fetch the current user
   Future<ApiResponse<User>> getCurrentUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -125,8 +119,11 @@ class AuthService {
       if (token == null) return ApiResponse.failure('No token found');
 
       final res = await client.get(
-        _u(ApiConstants.currentUser), // e.g. '/users/me'
-        headers: {'Authorization': 'Bearer $token'},
+        _u('/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
       );
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -165,7 +162,6 @@ class AuthService {
     return prefs.getBool('is_superuser') ?? false;
   }
 
-  /// Static helper to retrieve token for authorized API calls
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');

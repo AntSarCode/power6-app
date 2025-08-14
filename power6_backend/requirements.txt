@@ -7,6 +7,7 @@ httptools
 python-dotenv
 python-jose
 passlib
+passlib[bcrypt]
 psycopg2-binary
 
 # Optional tools & CLI
