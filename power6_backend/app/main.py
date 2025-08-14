@@ -5,25 +5,31 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Optional SQLAlchemy bits (safe if not present)
-try:  # narrow exception type
+try:
     from app.database import Base, engine  # type: ignore
 except ImportError:
     Base = None  # type: ignore
     engine = None  # type: ignore
 
 # Import the top-level API router (support common layouts)
-try:
-    from app.api.api_router import api_router  # type: ignore
-except ImportError:
+api_router = None
+for path in (
+    "app.api.api_router",
+    "app.api_router",
+    "app.routes.api_router",
+    "app.routes",
+):
     try:
-        from app.api_router import api_router  # type: ignore
-    except ImportError as e:
-        try:
-            from app.routes.api_router import api_router  # type: ignore
-        except ImportError:
-            raise RuntimeError(
-                "Could not import api_router from app.api.api_router, app.api_router, or app.routes.api_router"
-            ) from e
+        module = __import__(path, fromlist=["api_router"])
+        api_router = getattr(module, "api_router")
+        break
+    except (ImportError, AttributeError):
+        continue
+
+if api_router is None:
+    raise RuntimeError(
+        "Could not import api_router from app.api.api_router, app.api_router, app.routes.api_router, or app.routes"
+    )
 
 # SQLAlchemy error type (if available) for narrow exception handling
 try:
@@ -54,7 +60,6 @@ def _build_allowed_origins() -> list[str]:
 def build_app() -> FastAPI:
     application = FastAPI(title="Power6 Backend", version=os.getenv("APP_VERSION", "0.1.0"))
 
-    # --- CORS ---
     origins = _build_allowed_origins()
     application.add_middleware(
         CORSMiddleware,
@@ -65,15 +70,13 @@ def build_app() -> FastAPI:
         ),
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*"],  # includes Authorization, Content-Type, X-Requested-With, etc.
+        allow_headers=["*"],
         expose_headers=["*"],
         max_age=86400,
     )
 
-    # --- Routers ---
     application.include_router(api_router)
 
-    # --- Optional: ensure tables exist (skip if using Alembic migrations) ---
     if Base is not None and engine is not None:
         try:
             Base.metadata.create_all(bind=engine)  # type: ignore[attr-defined]
@@ -86,5 +89,4 @@ def build_app() -> FastAPI:
 
     return application
 
-# Uvicorn/Gunicorn entrypoint
 app = build_app()
