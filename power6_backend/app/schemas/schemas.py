@@ -18,9 +18,9 @@ class UserRead(BaseModel):
     id: int
     username: str
     email: EmailStr
-    tier: str
-    is_admin: bool
-    created_at: datetime
+    tier: Optional[str] = None
+    is_admin: bool = False
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -35,7 +35,6 @@ class LoginRequest(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
 
 # -----------------------------
 # Task Schemas
