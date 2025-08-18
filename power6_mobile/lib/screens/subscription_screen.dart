@@ -1,9 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:web/web.dart' as html;
 import '../state/app_state.dart';
+import '../services/api_service.dart';
 
-class SubscriptionScreen extends StatelessWidget {
+class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  bool _loading = false;
+
+  Future<void> _startCheckout(BuildContext context, String tier) async {
+    final token = context.read<AppState>().accessToken ?? '';
+    if (token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to upgrade.')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final response = await ApiService().post(
+        '/stripe/checkout',
+        token: token,
+        body: { 'tier': tier },
+      );
+
+      if (response.isSuccess && response.data != null && response.data['checkout_url'] != null) {
+        final url = response.data['checkout_url'] as String;
+        // Open Stripe checkout in a new tab (web)
+        html.window.open(url, '_blank');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.error ?? 'Failed to start checkout.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unexpected error starting checkout.')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +82,11 @@ class SubscriptionScreen extends StatelessWidget {
                   _buildPlanCard(context, 'pro', 'All Plus features + CSV export'),
                   const SizedBox(height: 16),
                   _buildPlanCard(context, 'elite', 'Everything Pro offers + group features'),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                 ],
               ),
             ),
@@ -67,9 +116,7 @@ class SubscriptionScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/subscribe/$tier');
-              },
+              onPressed: _loading ? null : () => _startCheckout(context, tier),
               child: const Text('Choose Plan'),
             )
           ],

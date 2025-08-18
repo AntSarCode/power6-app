@@ -7,27 +7,34 @@ import '../state/app_state.dart';
 import '../models/badge.dart' as badge_model;
 import 'api_response.dart';
 
+/// Central API base (overridable via --dart-define=API_BASE_URL=...)
+const String kApiBase = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'https://power6-backend.onrender.com',
+);
+
+Uri _buildUri(String path) {
+  if (path.startsWith('http')) return Uri.parse(path);
+  final normalized = path.startsWith('/') ? path : '/$path';
+  return Uri.parse('$kApiBase$normalized');
+}
+
+Map<String, String> _headers(String? token) => {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
 /// API service for Power6 app.
 class ApiService {
-  static const String _baseUrl = 'https://power6-backend.onrender.com';
   static const Duration _timeout = Duration(seconds: 15);
+
+  static String get baseUrl => kApiBase; // for debugging/logging if needed
 
   Future<ApiResponse<dynamic>> get(String path, {String? token}) async {
     try {
-      final uri = Uri.parse(
-        path.startsWith('http') ? path : '$_baseUrl${path.startsWith('/') ? path : '/$path'}',
-      );
-
-      final res = await http
-          .get(
-            uri,
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(_timeout);
+      final uri = _buildUri(path);
+      final res = await http.get(uri, headers: _headers(token)).timeout(_timeout);
 
       if (res.statusCode == 204 || res.body.isEmpty) {
         return ApiResponse.success(null);
@@ -41,6 +48,25 @@ class ApiService {
         }
       }
 
+      return ApiResponse.failure('Request failed (${res.statusCode})');
+    } on TimeoutException {
+      return ApiResponse.failure('Network timeout. Please try again.');
+    } catch (_) {
+      return ApiResponse.failure('Network error. Please check connection.');
+    }
+  }
+
+  /// Convenience POST (kept minimal; expands as needed)
+  Future<ApiResponse<dynamic>> post(String path, {String? token, Object? body}) async {
+    try {
+      final uri = _buildUri(path);
+      final res = await http
+          .post(uri, headers: _headers(token), body: body == null ? null : jsonEncode(body))
+          .timeout(_timeout);
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        return ApiResponse.success(res.body.isEmpty ? null : jsonDecode(res.body));
+      }
       return ApiResponse.failure('Request failed (${res.statusCode})');
     } on TimeoutException {
       return ApiResponse.failure('Network timeout. Please try again.');

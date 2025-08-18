@@ -1,5 +1,9 @@
 class ApiConstants {
-  static const String baseUrl = "http://127.0.0.1:8000";
+  /// Overridable at build time with --dart-define=API_BASE_URL=...
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://power6-backend.onrender.com',
+  );
 
   static const String login = '/auth/login';
   static const String register = '/auth/register';
