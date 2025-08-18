@@ -1,5 +1,3 @@
-// ui/theme.dart
-
 import 'package:flutter/material.dart';
 
 // Brand palette
@@ -69,14 +67,14 @@ final ThemeData appTheme = ThemeData(
     selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
   ),
   cardTheme: const CardThemeData(
-    color: kSurface,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(16)),
-    ),
-    elevation: 6,
-    margin: EdgeInsets.all(12),
-    clipBehavior: Clip.antiAlias,
+  elevation: 0,
+  margin: EdgeInsets.all(12),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.all(Radius.circular(16)),
   ),
+  clipBehavior: Clip.antiAlias,
+  color: kSurface,
+),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: kBrandTeal,
     contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
