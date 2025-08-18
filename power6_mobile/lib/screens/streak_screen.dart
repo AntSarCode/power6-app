@@ -2,24 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../services/streak_service.dart';
+import '../utils/access.dart';
+import '../widgets/tier_guard.dart';
 
 class StreakScreen extends StatelessWidget {
   const StreakScreen({super.key});
 
-  bool hasPlusAccess(String tier) {
-    return tier == 'plus' || tier == 'pro' || tier == 'elite' || tier == 'admin';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final streakService = Provider.of<StreakService>(context, listen: false);
-    final hasCompletedToday = appState.todayCompleted;
-    final streakCount = appState.currentStreak;
-    final tier = appState.user?.tier ?? 'free';
-
-    if (!hasPlusAccess(tier)) {
-      return Scaffold(
+    return TierGuard(
+      requiredTier: UserTier.plus,
+      child: _StreakContent(),
+      fallback: Scaffold(
         appBar: AppBar(title: const Text('🔥 Daily Streak')),
         body: const Center(
           child: Padding(
@@ -31,8 +25,18 @@ class StreakScreen extends StatelessWidget {
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
+  }
+}
+
+class _StreakContent extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final streakService = Provider.of<StreakService>(context, listen: false);
+    final hasCompletedToday = appState.todayCompleted;
+    final streakCount = appState.currentStreak;
 
     return Scaffold(
       appBar: AppBar(
