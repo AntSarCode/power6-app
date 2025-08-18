@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install base packages
         run: sudo apt-get update && sudo apt-get install -y git curl unzip xz-utils zip libglu1-mesa
 
       - name: Set up Flutter
@@ -31,12 +31,14 @@ jobs:
         run: flutter build web --release --dart-define=BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Verify build output
+        working-directory: power6_mobile
         run: |
           flutter --version
-          echo "Repo root contents:" && ls -la
-          echo "Web build contents:" && ls -la power6_mobile/build/web || true
-          du -sh power6_mobile/build/web || true
+          echo "Project contents:" && ls -la
+          echo "Web build contents:" && ls -la build/web || true
+          du -sh build/web || true
 
+      # Deploy from the folder that contains firebase.json
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -44,4 +46,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: .
+          entryPoint: power6_mobile
