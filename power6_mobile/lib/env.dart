@@ -1,9 +1,10 @@
-import 'package:flutter/foundation.dart';
-
 class Env {
-  static const String prodBase = String.fromEnvironment('BASE_URL',
-      defaultValue: 'https://power6-backend.onrender.com');
-  static const String devBase  = 'http://127.0.0.1:8000';
+  /// Single source of truth for API base.
+  /// Override with --dart-define=API_BASE_URL=...
+  static const String base = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://power6-backend.onrender.com',
+  );
 
-  static String get apiBase => kReleaseMode ? prodBase : devBase;
+  static String get apiBase => base;
 }

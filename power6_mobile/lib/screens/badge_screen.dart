@@ -16,6 +16,7 @@ class BadgeScreen extends StatefulWidget {
 class _BadgeScreenState extends State<BadgeScreen> {
   Future<List<userbadge.Badge>> _badges = Future.value(<userbadge.Badge>[]);
   String? _errorMessage;
+  bool _endpointMissing = false;
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _BadgeScreenState extends State<BadgeScreen> {
   Future<void> _loadBadges() async {
     setState(() {
       _errorMessage = null;
+      _endpointMissing = false;
     });
 
     final token = context.read<AppState>().accessToken ?? '';
@@ -40,10 +42,19 @@ class _BadgeScreenState extends State<BadgeScreen> {
       if (response.isSuccess) {
         setState(() => _badges = Future.value(response.data ?? <userbadge.Badge>[]));
       } else {
-        setState(() {
-          _errorMessage = response.error ?? 'Unable to load badges right now.';
-          _badges = Future.value(<userbadge.Badge>[]);
-        });
+        // If we detect a 404/missing endpoint, mark gracefully
+        final err = response.error?.toLowerCase() ?? '';
+        if (err.contains('404') || err.contains('not found')) {
+          setState(() {
+            _endpointMissing = true;
+            _badges = Future.value(<userbadge.Badge>[]);
+          });
+        } else {
+          setState(() {
+            _errorMessage = response.error ?? 'Unable to load badges right now.';
+            _badges = Future.value(<userbadge.Badge>[]);
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -79,6 +90,22 @@ class _BadgeScreenState extends State<BadgeScreen> {
                       final items = snapshot.data ?? <userbadge.Badge>[];
 
                       if (items.isEmpty) {
+                        if (_endpointMissing) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text('🎉 Badges Coming Soon!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                                SizedBox(height: 8),
+                                Text(
+                                  'The badge system is not live yet. Please check back in a future update.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
                         final title = _errorMessage == null
                             ? 'No badges earned yet.'
                             : 'Badges temporarily unavailable';
