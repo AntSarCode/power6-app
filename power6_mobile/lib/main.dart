@@ -5,13 +5,13 @@ import 'ui/theme.dart';
 import 'state/app_state.dart';
 
 // Screens
-import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/timeline_screen.dart';
 import 'screens/badge_screen.dart';
 import 'screens/subscription_screen.dart'; // upgrade target
+import 'navigation/main_nav.dart';
 
 // Optional services (only if widgets read them via Provider)
 // import 'services/streak_service.dart';
@@ -42,7 +42,7 @@ class Power6App extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         home: const _RootGate(),
         routes: {
-          '/home': (ctx) => const HomeScreen(),
+          '\/home': (ctx) => const MainNav(),
           '/login': (ctx) => const LoginScreen(),
           '/signup': (ctx) => const SignUpScreen(),
           '/streak': (ctx) => const StreakScreen(),

@@ -17,15 +17,21 @@ class MainNav extends StatefulWidget {
 class _MainNavState extends State<MainNav> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    TaskInputScreen(),
-    TaskReviewScreen(),
-    TimelineScreen(),
-    StreakScreen(),
-    HomeScreen(), // Dashboard
-    SubscriptionScreen(),
-    BadgeScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = const [
+      HomeScreen(), // Dashboard first after login
+      TaskInputScreen(),
+      TaskReviewScreen(),
+      TimelineScreen(),
+      StreakScreen(),
+      SubscriptionScreen(),
+      BadgeScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +44,11 @@ class _MainNavState extends State<MainNav> {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: 'Input'),
           BottomNavigationBarItem(icon: Icon(Icons.reviews), label: 'Review'),
           BottomNavigationBarItem(icon: Icon(Icons.timeline), label: 'Timeline'),
           BottomNavigationBarItem(icon: Icon(Icons.local_fire_department), label: 'Streak'),
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.workspace_premium), label: 'Subscribe'),
           BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'Badges'),
         ],
