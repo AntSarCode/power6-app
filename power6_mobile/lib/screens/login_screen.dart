@@ -109,9 +109,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(
+                      onPressed: () => Navigator.push(
                         context,
-                        SignUpScreen.routeName,
+                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
                       ),
                       child: const Text('Sign up'),
                     ),
