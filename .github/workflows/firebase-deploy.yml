@@ -38,7 +38,8 @@ jobs:
           echo "Web build contents:" && ls -la build/web || true
           du -sh build/web || true
 
-      # Deploy from the folder that contains firebase.json
+      # Deploy from REPO ROOT because firebase.json is at the root.
+      # firebase.json points 'public' to power6_mobile/build/web
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -46,4 +47,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: power6_mobile
+          entryPoint: .
