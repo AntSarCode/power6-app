@@ -29,7 +29,7 @@ dependencies:
   # Preferences
   shared_preferences: ^2.5.3
 
-  url_launcher: any
+  url_launcher: ^6.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

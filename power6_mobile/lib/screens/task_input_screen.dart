@@ -16,7 +16,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
   bool _isSaving = false;
   final List<String> _priorities = ['Low', 'Normal', 'High'];
 
-  void _saveTask() async {
+  Future<void> _saveTask() async {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
@@ -34,19 +34,26 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       completedAt: null,
     );
 
-    await TaskService.addTask(newTask);
+    try {
+      await TaskService.addTask(newTask);
 
-    setState(() {
-      _isSaving = false;
-      _controller.clear();
-      _priority = 'Normal';
-      _streakBound = false;
-    });
-
-    if (context.mounted) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task saved successfully!')),
+        SnackBar(content: Text('Task "$title" saved successfully!')),
       );
+
+      setState(() {
+        _isSaving = false;
+        _controller.clear();
+        _priority = 'Normal';
+        _streakBound = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save task: $e')),
+      );
+      setState(() => _isSaving = false);
     }
   }
 
@@ -86,13 +93,13 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                         child: Text(priority),
                       );
                     }).toList(),
-                    onChanged: (value) => setState(() => _priority = value!),
+                    onChanged: (value) => setState(() => _priority = value ?? 'Normal'),
                   ),
                   const SizedBox(height: 16),
                   CheckboxListTile(
                     title: const Text('Streak Bound'),
                     value: _streakBound,
-                    onChanged: (value) => setState(() => _streakBound = value!),
+                    onChanged: (value) => setState(() => _streakBound = value ?? false),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
