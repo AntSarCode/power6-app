@@ -10,11 +10,11 @@ import 'screens/signup_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/timeline_screen.dart';
 import 'screens/badge_screen.dart';
-import 'screens/subscription_screen.dart'; // upgrade target
+import 'screens/subscription_screen.dart';
 import 'navigation/main_nav.dart';
 
-// Optional services (only if widgets read them via Provider)
-// import 'services/streak_service.dart';
+// Services
+import 'services/streak_service.dart';
 
 /// Global messenger key so overlays/snackbars can work from anywhere.
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -33,7 +33,7 @@ class Power6App extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()),
-        // Provider(create: (_) => StreakService()),
+        Provider(create: (_) => StreakService()),
       ],
       child: MaterialApp(
         title: 'Power6',
@@ -42,13 +42,13 @@ class Power6App extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         home: const _RootGate(),
         routes: {
-          '\/home': (ctx) => const MainNav(),
+          '/home': (ctx) => const MainNav(),
           '/login': (ctx) => const LoginScreen(),
           '/signup': (ctx) => const SignUpScreen(),
           '/streak': (ctx) => const StreakScreen(),
           '/timeline': (ctx) => const TimelineScreen(),
-          '/badges': (ctx) => const BadgeScreen(),
-          '/upgrade': (ctx) => const SubscriptionScreen(),
+          '/badges': (ctx) => const BadgeScreen(),          '/upgrade': (ctx) => const SubscriptionScreen(),
+          '/subscribe': (ctx) => const SubscriptionScreen(),
         },
         onUnknownRoute: (settings) => MaterialPageRoute(
           builder: (_) => const LoginScreen(),
@@ -70,7 +70,6 @@ class _RootGateState extends State<_RootGate> {
   @override
   void initState() {
     super.initState();
-    // Defer routing to the first frame to avoid build-time navigation issues.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appState = context.read<AppState>();
       final hasToken = (appState.accessToken ?? '').isNotEmpty;

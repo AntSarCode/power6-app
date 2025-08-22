@@ -4,14 +4,12 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Optional SQLAlchemy bits (safe if not present)
 try:
     from app.database import Base, engine  # type: ignore
 except ImportError:
     Base = None  # type: ignore
     engine = None  # type: ignore
 
-# Import the top-level API router (support common layouts)
 api_router = None
 for path in (
     "app.api.api_router",
@@ -31,7 +29,6 @@ if api_router is None:
         "Could not import api_router from app.api.api_router, app.api_router, app.routes.api_router, or app.routes"
     )
 
-# SQLAlchemy error type (if available) for narrow exception handling
 try:
     from sqlalchemy.exc import SQLAlchemyError  # type: ignore
 except ImportError:
@@ -76,6 +73,14 @@ def build_app() -> FastAPI:
     )
 
     application.include_router(api_router)
+
+    try:
+        from app.routes import stripe as stripe_routes  # type: ignore
+        application.include_router(
+            stripe_routes.router, prefix="/stripe", tags=["stripe"]
+        )
+    except Exception:
+        pass
 
     if Base is not None and engine is not None:
         try:

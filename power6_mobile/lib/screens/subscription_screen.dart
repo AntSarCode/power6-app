@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../state/app_state.dart';
 import '../services/api_service.dart';
 
@@ -14,7 +15,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _loading = false;
   String? _error;
 
-  Future<void> _startCheckout(BuildContext context, String tier) async {
+  Future<void> _startCheckout(
+    BuildContext context,
+    String tier,
+    String interval, // <-- added
+  ) async {
     final app = context.read<AppState>();
     final token = app.accessToken ?? '';
     final userId = app.user?.id.toString() ?? '';
@@ -38,17 +43,26 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         body: {
           'user_id': userId,
           'tier': tier,
+          'interval': interval, // <-- send interval to backend
         },
       );
 
       if (response.isSuccess &&
           response.data != null &&
-          response.data['checkout_url'] != null) {
-        final String url = response.data['checkout_url'] as String;
-        // Neutral approach: display checkout URL in snackbar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Checkout URL: $url')),
-        );
+          response.data?['checkout_url'] != null) {
+        final String url = response.data?['checkout_url'] as String;
+        final uri = Uri.parse(url);
+
+        // Attempt to launch Stripe Checkout in a new tab/window
+        final ok = await canLaunchUrl(uri);
+        if (ok) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          // Fallback: show URL so user can copy it
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Checkout URL: $url')),
+          );
+        }
       } else {
         final msg = response.error ?? 'Failed to start checkout (unexpected response).';
         setState(() => _error = msg);
@@ -93,11 +107,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
         const SizedBox(height: 12),
-        _buildPlanCard(context, currentTier, 'plus', 'Access streak tracker and timeline'),
+        _planCard(context, currentTier, 'plus', 'Access streak tracker and timeline'),
         const SizedBox(height: 16),
-        _buildPlanCard(context, currentTier, 'pro', 'All Plus features + CSV export'),
+        _planCard(context, currentTier, 'pro', 'All Plus features + CSV export'),
         const SizedBox(height: 16),
-        _buildPlanCard(context, currentTier, 'elite', 'Everything Pro offers + group features'),
+        _planCard(context, currentTier, 'elite', 'Everything Pro offers + group features'),
         if (_loading)
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -107,7 +121,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanCard(
+  Widget _planCard(
     BuildContext context,
     String currentTier,
     String planKey,
@@ -130,11 +144,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(height: 8),
             Text(description, style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: (isCurrent || _loading)
-                  ? null
-                  : () => _startCheckout(context, planKey),
-              child: Text(isCurrent ? 'Current Plan' : 'Choose Plan'),
+            // Two options: Monthly / Yearly
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: (isCurrent || _loading)
+                        ? null
+                        : () => _startCheckout(context, planKey, 'monthly'),
+                    child: Text(isCurrent ? 'Current Plan' : 'Choose Monthly'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: (isCurrent || _loading)
+                        ? null
+                        : () => _startCheckout(context, planKey, 'yearly'),
+                    child: const Text('Choose Yearly'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

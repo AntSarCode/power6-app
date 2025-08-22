@@ -8,6 +8,7 @@ router = APIRouter()
 class CheckoutRequest(BaseModel):
     user_id: str
     tier: str
+    interval: str  # "monthly" or "yearly"
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request):
@@ -33,7 +34,7 @@ async def stripe_webhook(request: Request):
 @router.post("/create-checkout-session")
 async def create_checkout(data: CheckoutRequest):
     try:
-        session = create_checkout_session(data.user_id, data.tier)
+        session = create_checkout_session(data.user_id, f"{data.tier}:{data.interval}")
         return {"checkout_url": session.url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

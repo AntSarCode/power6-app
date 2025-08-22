@@ -22,17 +22,15 @@ class _StreakScreenState extends State<StreakScreen> {
   }
 
   Future<_StreakData> _loadStreak() async {
-    final appState = context.read<AppState>();
-    final streakService = context.read<StreakService>();
-    final token = appState.accessToken ?? '';
-
-    if (token.isEmpty) {
-      // Treat as a handled error state with a clear message
-      throw Exception('You are not signed in.');
-    }
-
     try {
-      // Ensure remote state is fresh; service should use centralized ApiService base.
+      final appState = context.read<AppState>();
+      final streakService = context.read<StreakService>();
+      final token = appState.accessToken ?? '';
+
+      if (token.isEmpty) {
+        throw Exception('You are not signed in.');
+      }
+
       await streakService.refreshStreak();
       await appState.loadStreak();
 
@@ -44,14 +42,19 @@ class _StreakScreenState extends State<StreakScreen> {
         hasCompletedToday: hasCompletedToday,
       );
     } catch (e) {
-      // Bubble up a friendly message; FutureBuilder will render an error panel.
-      throw Exception('Unable to load streak.');
+      // Capture full error for debugging but present a friendly message to the UI
+      debugPrint('Streak load error: $e');
+      throw Exception('Unable to load streak data.');
     }
   }
 
   Future<void> _refresh() async {
     setState(() => _streakFuture = _loadStreak());
-    await _streakFuture; // Let RefreshIndicator know when to stop
+    try {
+      await _streakFuture;
+    } catch (_) {
+      // Swallow here; FutureBuilder will show error panel
+    }
   }
 
   @override

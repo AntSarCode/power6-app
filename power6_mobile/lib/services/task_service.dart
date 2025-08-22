@@ -46,10 +46,10 @@ class TaskService {
     }
   }
 
-  static Future<void> addTask(Task task) async {
+  static Future<Task> addTask(Task task) async {
     final token = await AuthService.getToken();
     final response = await http.post(
-      Uri.parse('${ApiConstants.baseUrl}/tasks/'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -57,7 +57,10 @@ class TaskService {
       body: jsonEncode(task.toJson()),
     );
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return Task.fromJson(data);
+    } else {
       throw Exception('Failed to save task: ${response.body}');
     }
   }
