@@ -82,13 +82,13 @@ flutter run -d chrome
 ## 💳 Subscription Tiers
 | Feature                  | Free | Plus | Pro  | Elite |
 |--------------------------|------|------|------|-------|
-| Task Input / Review      | ✅   | ✅   | ✅   | ✅    |
-| Streak Tracker           | ✅   | ✅   | ✅   | ✅    |
-| Timeline View            | ❌   | ✅   | ✅   | ✅    |
-| Stats Dashboard          | ❌   | ❌   | ✅   | ✅    |
-| Badge Rewards            | ❌   | ✅   | ✅   | ✅    |
-| Multi-device Sync        | ❌   | ✅   | ✅   | ✅    |
-| Admin Features           | ❌   | ❌   | ❌   | ✅    |
+| Task Input / Review      | ✅   | ✅   | ✅   | ✅   |
+| Streak Tracker           | ✅   | ✅   | ✅   | ✅   |
+| Timeline View            | ❌   | ✅   | ✅   | ✅   |
+| Stats Dashboard          | ❌   | ❌   | ✅   | ✅   |
+| Badge Rewards            | ❌   | ✅   | ✅   | ✅   |
+| Multi-device Sync        | ❌   | ✅   | ✅   | ✅   |
+| Admin Features           | ❌   | ❌   | ❌   | ✅   |
 
 ---
 
