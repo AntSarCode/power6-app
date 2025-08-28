@@ -59,17 +59,20 @@ class Task {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson({bool forCreate = false}) {
+    final data = {
       'id': id,
       'user_id': userId,
       'title': title,
       'notes': notes,
-      'completed': completed,
       'priority': priority,
       'scheduled_for': scheduledFor.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
       'streak_bound': streakBound,
     };
+    if (!forCreate) {
+      data['completed'] = completed;
+    }
+    return data;
   }
 }

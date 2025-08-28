@@ -54,7 +54,7 @@ class TaskService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode(task.toJson()),
+      body: jsonEncode(task.toJson(forCreate: true)),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
