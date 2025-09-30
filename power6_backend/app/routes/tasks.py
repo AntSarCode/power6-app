@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
+import re
 
 from app.models.models import Task as TaskModel
 from app.models.models import User
@@ -14,6 +15,23 @@ router = APIRouter(
     tags=["Tasks"]
 )
 
+
+def _coerce_user_id(current_user: User) -> int:
+    """
+    Ensure we always use a plain integer user_id.
+    Some auth layers may surface ids like "5" or "5:extra"; extract the first number.
+    """
+    raw = getattr(current_user, "id", None)
+    if raw is None:
+        raise HTTPException(status_code=401, detail="Invalid user")
+    if isinstance(raw, int):
+        return raw
+    m = re.search(r"\d+", str(raw))
+    if not m:
+        raise HTTPException(status_code=401, detail="Invalid user id")
+    return int(m.group(0))
+
+
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 def upload_tasks(
     tasks: List[TaskCreate],
@@ -21,9 +39,11 @@ def upload_tasks(
     current_user: User = Depends(get_current_user)
 ):
     today = date.today()
+    uid = _coerce_user_id(current_user)
 
+    # Remove any existing tasks for this user for "today" before bulk insert
     db.query(TaskModel).filter(
-        TaskModel.user_id == current_user.id,
+        TaskModel.user_id == uid,
         TaskModel.created_at == today
     ).delete(synchronize_session=False)
 
@@ -31,17 +51,17 @@ def upload_tasks(
         db_task = TaskModel(
             title=task.title,
             notes=task.notes,
-            priority=task.priority,
+            priority=task.priority,            # normalized in schemas
             scheduled_for=task.scheduled_for,
             completed=task.completed,
             streak_bound=task.streak_bound,
             completed_at=task.completed_at,
-            user_id=current_user.id,
+            user_id=uid,
             created_at=today,
         )
         db.add(db_task)
-    db.commit()
 
+    db.commit()
     return {"status": "success", "count": len(tasks)}
 
 
@@ -51,7 +71,12 @@ def get_today_tasks(
     current_user: User = Depends(get_current_user)
 ):
     today = date.today()
-    return db.query(TaskModel).filter(TaskModel.user_id == current_user.id, TaskModel.created_at == today).all()
+    uid = _coerce_user_id(current_user)
+    return (
+        db.query(TaskModel)
+        .filter(TaskModel.user_id == uid, TaskModel.created_at == today)
+        .all()
+    )
 
 
 @router.post("/", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
@@ -60,16 +85,17 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    uid = _coerce_user_id(current_user)
     db_task = TaskModel(
         title=task.title,
         notes=task.notes,
-        priority=task.priority,
+        priority=task.priority,            # normalized in schemas
         scheduled_for=task.scheduled_for,
         completed=task.completed,
         streak_bound=task.streak_bound,
         completed_at=task.completed_at,
-        user_id=current_user.id,
-        created_at=date.today()
+        user_id=uid,
+        created_at=date.today(),
     )
     db.add(db_task)
     db.commit()
@@ -84,9 +110,10 @@ def read_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    uid = _coerce_user_id(current_user)
     return (
         db.query(TaskModel)
-        .filter(TaskModel.user_id == current_user.id)
+        .filter(TaskModel.user_id == uid)
         .offset(skip)
         .limit(limit)
         .all()
@@ -99,7 +126,11 @@ def read_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == current_user.id).first()
+    uid = _coerce_user_id(current_user)
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id,
+        TaskModel.user_id == uid
+    ).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -112,12 +143,18 @@ def update_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == current_user.id).first()
+    uid = _coerce_user_id(current_user)
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id,
+        TaskModel.user_id == uid
+    ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
     update_data = updated_task.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(task, key, value)
+
     db.commit()
     db.refresh(task)
     return task
@@ -129,7 +166,11 @@ def delete_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == current_user.id).first()
+    uid = _coerce_user_id(current_user)
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id,
+        TaskModel.user_id == uid
+    ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(task)
