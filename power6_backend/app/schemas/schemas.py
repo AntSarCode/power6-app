@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
-from pydantic import BaseModel, EmailStr, Field, AliasChoices
+from pydantic import BaseModel, EmailStr, Field, AliasChoices, field_validator
 
 # -----------------------------
 # User Schemas (Pydantic v2)
@@ -43,9 +43,22 @@ class Token(BaseModel):
 class TaskBase(BaseModel):
     title: str
     notes: Optional[str] = None
-    priority: str = "Normal"
+    # Accept string ("Low"|"Normal"|"High") or int (0,1,2) from older clients
+    priority: Union[str, int] = "Normal"
     scheduled_for: Optional[datetime] = None
     streak_bound: bool = False
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def normalize_priority(cls, v):
+        mapping = {0: "Low", 1: "Normal", 2: "High"}
+        if isinstance(v, int):
+            return mapping.get(v, "Normal")
+        if isinstance(v, str):
+            s = v.strip().capitalize()
+            if s in ("Low", "Normal", "High"):
+                return s
+        raise ValueError("Invalid priority; expected 'Low'|'Normal'|'High' or 0|1|2")
 
 class TaskCreate(TaskBase):
     # Ensure backend has the field it expects and default to False
@@ -55,11 +68,25 @@ class TaskCreate(TaskBase):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     notes: Optional[str] = None
-    priority: Optional[str] = None
+    priority: Optional[Union[str, int]] = None
     scheduled_for: Optional[datetime] = None
     completed: Optional[bool] = None
     completed_at: Optional[datetime] = None
     streak_bound: Optional[bool] = None
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def normalize_priority(cls, v):
+        if v is None:
+            return v
+        mapping = {0: "Low", 1: "Normal", 2: "High"}
+        if isinstance(v, int):
+            return mapping.get(v, "Normal")
+        if isinstance(v, str):
+            s = v.strip().capitalize()
+            if s in ("Low", "Normal", "High"):
+                return s
+        raise ValueError("Invalid priority; expected 'Low'|'Normal'|'High' or 0|1|2")
 
 class TaskRead(TaskBase):
     id: int
