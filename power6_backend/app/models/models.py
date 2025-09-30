@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, CheckConstraint, text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -25,13 +25,17 @@ class User(Base):
 class Task(Base):
     __tablename__ = "tasks"
 
+    __table_args__ = (
+        CheckConstraint("priority IN (0,1,2)", name="ck_tasks_priority_range"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     notes = Column(String)
-    priority = Column(Integer, default=0)
+    priority = Column(Integer, nullable=False, server_default="1")
     scheduled_for = Column(DateTime(timezone=True))
-    completed = Column(Boolean, default=False)
-    streak_bound = Column(Boolean, default=False)
+    completed = Column(Boolean, nullable=False, server_default=text("false"))
+    streak_bound = Column(Boolean, nullable=False, server_default=text("false"))
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
