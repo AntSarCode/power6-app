@@ -10,6 +10,17 @@ from app.database import get_db
 from app.routes.auth import get_current_user
 from app.schemas import TaskCreate, TaskRead, TaskUpdate
 
+PRIORITY_MAP = {"Low": 0, "Normal": 1, "High": 2}
+
+def _priority_to_db(v) -> int:
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str):
+        s = v.strip().capitalize()
+        return PRIORITY_MAP.get(s, 1)  # default to Normal
+    return 1
+
+
 router = APIRouter(
     prefix="/tasks",
     tags=["Tasks"]
@@ -51,7 +62,7 @@ def upload_tasks(
         db_task = TaskModel(
             title=task.title,
             notes=task.notes,
-            priority=task.priority,            # normalized in schemas
+            priority=_priority_to_db(task.priority),
             scheduled_for=task.scheduled_for,
             completed=task.completed,
             streak_bound=task.streak_bound,
@@ -89,7 +100,7 @@ def create_task(
     db_task = TaskModel(
         title=task.title,
         notes=task.notes,
-        priority=task.priority,            # normalized in schemas
+        priority=_priority_to_db(task.priority),
         scheduled_for=task.scheduled_for,
         completed=task.completed,
         streak_bound=task.streak_bound,
@@ -152,6 +163,8 @@ def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     update_data = updated_task.model_dump(exclude_unset=True)
+    if "priority" in update_data:
+        update_data["priority"] = _priority_to_db(update_data["priority"])
     for key, value in update_data.items():
         setattr(task, key, value)
 
