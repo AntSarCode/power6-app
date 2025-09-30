@@ -43,17 +43,19 @@ class Token(BaseModel):
 class TaskBase(BaseModel):
     title: str
     notes: Optional[str] = None
-    priority: int = 0
-    scheduled_for: datetime
+    priority: str = "Normal"
+    scheduled_for: Optional[datetime] = None
     streak_bound: bool = False
 
 class TaskCreate(TaskBase):
-    pass
+    # Ensure backend has the field it expects and default to False
+    completed: bool = False
+    completed_at: Optional[datetime] = None
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     notes: Optional[str] = None
-    priority: Optional[int] = None
+    priority: Optional[str] = None
     scheduled_for: Optional[datetime] = None
     completed: Optional[bool] = None
     completed_at: Optional[datetime] = None

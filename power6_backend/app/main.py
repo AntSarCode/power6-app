@@ -12,7 +12,6 @@ except ImportError:
     Base = None
     engine = None
 
-# ✅ deterministically import the API router your project defines
 from app.routes import api_router  # <-- app/routes/__init__.py creates api_router
 
 def build_app() -> FastAPI:
@@ -20,10 +19,8 @@ def build_app() -> FastAPI:
 
     # --- CORS ---
     origins = [
-        # Production (your live site)
         "https://power6.app",
         "https://www.power6.app",
-        # Keep Firebase hosts if you still serve from there
         "https://power6-app.web.app",
         "https://power6-app.firebaseapp.com",
     ]
@@ -36,8 +33,6 @@ def build_app() -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        # If you prefer regex, you can keep it, but explicit hosts are clearest:
-        # allow_origin_regex=r"^https://([a-z0-9-]+\.)?power6\.app$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -7,7 +7,7 @@ from app.models.models import Task as TaskModel
 from app.models.models import User
 from app.database import get_db
 from app.routes.auth import get_current_user
-from app.schemas import TaskCreate, TaskRead
+from app.schemas import TaskCreate, TaskRead, TaskUpdate
 
 router = APIRouter(
     prefix="/tasks",
@@ -20,7 +20,7 @@ def upload_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    today = date.today().isoformat()
+    today = date.today()
 
     db.query(TaskModel).filter(
         TaskModel.user_id == current_user.id,
@@ -50,7 +50,7 @@ def get_today_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    today = date.today().isoformat()
+    today = date.today()
     return db.query(TaskModel).filter(TaskModel.user_id == current_user.id, TaskModel.created_at == today).all()
 
 
@@ -69,7 +69,7 @@ def create_task(
         streak_bound=task.streak_bound,
         completed_at=task.completed_at,
         user_id=current_user.id,
-        created_at=date.today().isoformat()
+        created_at=date.today()
     )
     db.add(db_task)
     db.commit()
@@ -108,14 +108,15 @@ def read_task(
 @router.put("/{task_id}", response_model=TaskRead, status_code=status.HTTP_200_OK)
 def update_task(
     task_id: int,
-    updated_task: TaskCreate,
+    updated_task: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == current_user.id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    for key, value in updated_task.model_dump().items():
+    update_data = updated_task.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(task, key, value)
     db.commit()
     db.refresh(task)
