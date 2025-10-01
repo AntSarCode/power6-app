@@ -17,6 +17,7 @@ class HomeScreen extends StatelessWidget {
     final streak = appState.currentStreak;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('Power6 Dashboard')),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -27,7 +28,10 @@ class HomeScreen extends StatelessWidget {
               // Header
               Text(
                 'Welcome, $user',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -37,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'You\'re on a $streak-day streak. Keep it going! ',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ),
                 ],
@@ -51,7 +55,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Tasks
-              Text('Today\'s Tasks', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Text('Today\'s Tasks', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
               const SizedBox(height: 8),
               if (tasks.isEmpty)
                 Container(
@@ -62,8 +66,9 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.black12),
                   ),
-                  child: const Text(
+                  child: Text(
                     'No tasks yet. Add up to six and we\'ll help you prioritize. Unfinished tasks roll over to tomorrow.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface),
                   ),
                 )
               else
