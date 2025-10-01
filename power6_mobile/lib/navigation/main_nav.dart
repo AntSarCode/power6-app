@@ -6,6 +6,7 @@ import '../screens/streak_screen.dart';
 import '../screens/timeline_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../screens/badge_screen.dart';
+import '../widgets/logout_pill.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -61,6 +62,8 @@ class _MainNavState extends State<MainNav> {
           ],
         ),
       ),
+      floatingActionButton: const LogoutPill(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
