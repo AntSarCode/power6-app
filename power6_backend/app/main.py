@@ -12,7 +12,8 @@ except ImportError:
     Base = None
     engine = None
 
-from app.routes import api_router  # <-- app/routes/__init__.py creates api_router
+from app.routes import api_router
+from app.routes.stripe import router as stripe_router
 
 def build_app() -> FastAPI:
     application = FastAPI(title="Power6 API")
@@ -25,7 +26,6 @@ def build_app() -> FastAPI:
         "https://power6-app.firebaseapp.com",
     ]
 
-    # allow env var extensions: ALLOWED_ORIGINS="https://foo.com,https://bar.com"
     extra = os.getenv("ALLOWED_ORIGINS", "")
     if extra.strip():
         origins.extend([o.strip() for o in extra.split(",") if o.strip()])
@@ -40,8 +40,9 @@ def build_app() -> FastAPI:
         max_age=86400,
     )
 
-    # ✅ mount routes at root
+    # mount routes at root
     application.include_router(api_router, prefix="")
+    application.include_router(stripe_router, prefix="/stripe")
 
     # --- optional automatic metadata creation (safe-guarded) ---
     if Base is not None and engine is not None:
