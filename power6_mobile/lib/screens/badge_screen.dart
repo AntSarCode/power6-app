@@ -136,7 +136,7 @@ class _BadgeTile extends StatelessWidget {
                   'assets/badges/${vm.icon}',
                   fit: BoxFit.contain,
                   errorBuilder: (c, e, s) {
-                    return Icon(Icons.emoji_events, size: 40, color: cs.onSurface.withValues(alpha: 0.6));
+                    return Icon(Icons.emoji_events, size: 40, color: cs.onSurface.withAlpha((0.6 * 255).toInt()));
                   },
                 ),
               ),
@@ -151,7 +151,7 @@ class _BadgeTile extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha: 0.75)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface.withAlpha((0.75 * 255).toInt())),
             )
           ],
         ),
