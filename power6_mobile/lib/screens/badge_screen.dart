@@ -1,190 +1,317 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../state/app_state.dart';
+import '../services/api_service.dart';
 
-/// Badge view model used by the screen regardless of backend shape.
-class BadgeVM {
-  final String title;
-  final String description;
-  final String icon; // file name like 'starter.png'
-  BadgeVM({required this.title, required this.description, required this.icon});
+class SubscriptionScreen extends StatefulWidget {
+  const SubscriptionScreen({super.key});
 
-  factory BadgeVM.fromDynamic(dynamic b) {
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _startCheckout(
+    BuildContext context,
+    String tier,
+    String interval,
+  ) async {
+    final app = context.read<AppState>();
+    final token = app.accessToken ?? '';
+    final userId = app.user?.id.toString() ?? '';
+
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to upgrade.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
-      // Try typed properties first
-      final t = (b.title ?? b['title']).toString();
-      final d = (b.description ?? b['description']).toString();
-      final i = ((b.iconUri ?? b.icon_uri ?? b['icon_uri'] ?? b['icon']).toString());
-      return BadgeVM(title: t, description: d, icon: i);
-    } catch (_) {
-      return BadgeVM(title: b['title']?.toString() ?? '', description: b['description']?.toString() ?? '', icon: b['icon_uri']?.toString() ?? '');
+      final response = await ApiService().post(
+        '/stripe/create-checkout-session',
+        token: token,
+        body: {
+          'user_id': userId,
+          'tier': tier,
+          'interval': interval,
+        },
+      );
+
+      if (response.isSuccess && response.data != null && response.data?['checkout_url'] != null) {
+        final String url = response.data?['checkout_url'] as String;
+        final uri = Uri.parse(url);
+        final ok = await canLaunchUrl(uri);
+        if (ok) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Checkout URL: $url')),
+          );
+        }
+      } else {
+        final msg = response.error ?? 'Failed to start checkout (unexpected response).';
+        setState(() => _error = msg);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    } catch (e) {
+      setState(() => _error = e.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
-}
-
-class BadgeScreen extends StatefulWidget {
-  const BadgeScreen({super.key});
-  @override
-  State<BadgeScreen> createState() => _BadgeScreenState();
-}
-
-class _BadgeScreenState extends State<BadgeScreen> {
-  late Future<List<BadgeVM>> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = _loadBadges();
-  }
-
-  Future<List<BadgeVM>> _loadBadges() async {
-    // For now, load from local seed. TODO: wire backend BadgeService once available.
-    const local = [
-      {'title': 'Starter', 'description': 'Complete your first task', 'icon_uri': 'starter.png'},
-      {'title': 'Disciplined', 'description': 'Complete tasks 5 days in a row', 'icon_uri': 'disciplined.png'},
-      {'title': 'Night Owl', 'description': 'Finish a task after midnight', 'icon_uri': 'night_owl.png'},
-      {'title': 'Early Bird', 'description': 'Finish a task before 7am', 'icon_uri': 'early_bird.png'},
-      {'title': 'Weekend Warrior', 'description': 'Complete a task on the weekend', 'icon_uri': 'weekend_warrior.png'},
-      {'title': 'Veteran', 'description': 'Complete 100 tasks', 'icon_uri': 'veteran.png'},
-      {'title': 'Overachiever', 'description': 'Complete 500 tasks', 'icon_uri': 'overachiever.png'},
-      {'title': 'Task Master', 'description': 'Complete 1000 tasks', 'icon_uri': 'task_master.png'},
-      {'title': 'Social Butterfly', 'description': 'Share a task on social media', 'icon_uri': 'social_butterfly.png'},
-      {'title': 'Feedback Guru', 'description': 'Give feedback on 10 tasks', 'icon_uri': 'feedback_guru.png'},
-      {'title': 'Goal Getter', 'description': 'Set and achieve 5 goals', 'icon_uri': 'goal_getter.png'},
-      {'title': 'Community Builder', 'description': 'Invite 10 friends to join', 'icon_uri': 'community_builder.png'},
-      {'title': 'Challenge Champion', 'description': 'Complete 5 weekly challenges', 'icon_uri': 'challenge_champion.png'},
-      {'title': 'Devout', 'description': 'Complete tasks for 30 days straight', 'icon_uri': 'devout.png'},
-      {'title': 'Feedback Fanatic', 'description': 'Receive feedback on 20 tasks', 'icon_uri': 'feedback_fanatic.png'},
-    ];
-    return local.map(BadgeVM.fromDynamic).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final app = context.watch<AppState>();
+    final currentTier = (app.user?.tier ?? 'free').toString().toLowerCase();
+    final displayTier = currentTier.isNotEmpty
+        ? '${currentTier[0].toUpperCase()}${currentTier.substring(1)}'
+        : 'Free';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Badges')),
-      backgroundColor: cs.surface,
-      body: FutureBuilder<List<BadgeVM>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Could not load badges. Please try again later.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface)),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Upgrade Your Plan'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          // Unified dark gradient background (same as other screens)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF0A0F12),
+                  Color.fromRGBO(15, 31, 36, 0.95),
+                  Color(0xFF0A0F12),
+                ],
               ),
-            );
-          }
-          final items = snap.data ?? const <BadgeVM>[];
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // How it works
-                _BadgesHowItWorks(),
-                const SizedBox(height: 16),
+            ),
+          ),
+          // Decorative glow
+          Positioned(
+            top: -120,
+            right: -70,
+            child: SizedBox(
+              width: 300,
+              height: 300,
+              child: ClipOval(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.32)),
+                ),
+              ),
+            ),
+          ),
 
-                // Grid of badges
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.8,
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Text(
+                      'Your Current Tier: $displayTier',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  itemCount: items.length,
-                  itemBuilder: (context, i) {
-                    final b = items[i];
-                    return _BadgeTile(vm: b);
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+                  const SizedBox(height: 12),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.redAccent),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
 
-class _BadgeTile extends StatelessWidget {
-  final BadgeVM vm;
-  const _BadgeTile({required this.vm});
+                  _PlanCard(
+                    title: 'PLUS',
+                    subtitle: 'Access streak tracker and timeline',
+                    bullets: const [
+                      'Daily streak tracker',
+                      'Task timeline view',
+                      'Priority badges and glow UI',
+                    ],
+                    isCurrent: currentTier == 'plus',
+                    accent: const Color.fromRGBO(100, 255, 218, 1),
+                    onMonthly: _loading ? null : () => _startCheckout(context, 'plus', 'monthly'),
+                    onYearly: _loading ? null : () => _startCheckout(context, 'plus', 'yearly'),
+                  ),
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Try asset first, otherwise allow network if your backend serves icons
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  'assets/badges/${vm.icon}',
-                  fit: BoxFit.contain,
-                  errorBuilder: (c, e, s) {
-                    return Icon(Icons.emoji_events, size: 40, color: cs.onSurface.withAlpha((0.6 * 255).toInt()));
-                  },
-                ),
+                  const SizedBox(height: 16),
+
+                  _PlanCard(
+                    title: 'PRO',
+                    subtitle: 'All Plus features + CSV export',
+                    bullets: const [
+                      'Everything in Plus',
+                      'CSV export & analytics',
+                      'Priority support',
+                    ],
+                    isCurrent: currentTier == 'pro',
+                    accent: const Color.fromRGBO(173, 216, 230, 1),
+                    onMonthly: _loading ? null : () => _startCheckout(context, 'pro', 'monthly'),
+                    onYearly: _loading ? null : () => _startCheckout(context, 'pro', 'yearly'),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  _PlanCard(
+                    title: 'ELITE',
+                    subtitle: 'Everything Pro offers + group features',
+                    bullets: const [
+                      'Everything in Pro',
+                      'Group budgets & leaderboards',
+                      'Early feature access',
+                    ],
+                    isCurrent: currentTier == 'elite',
+                    accent: const Color.fromRGBO(255, 215, 0, 1),
+                    onMonthly: _loading ? null : () => _startCheckout(context, 'elite', 'monthly'),
+                    onYearly: _loading ? null : () => _startCheckout(context, 'elite', 'yearly'),
+                  ),
+
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(vm.title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text(
-              vm.description,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface.withAlpha((0.75 * 255).toInt())),
-            )
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _BadgesHowItWorks extends StatelessWidget {
+class _PlanCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final List<String> bullets;
+  final bool isCurrent;
+  final Color accent;
+  final VoidCallback? onMonthly;
+  final VoidCallback? onYearly;
+
+  const _PlanCard({
+    required this.title,
+    required this.subtitle,
+    required this.bullets,
+    required this.isCurrent,
+    required this.accent,
+    required this.onMonthly,
+    required this.onYearly,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.emoji_events_outlined),
-                const SizedBox(width: 8),
-                Text('Badges', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Earn badges by completing tasks consistently and hitting key milestones. Each badge has a unique condition—tap a badge to learn more.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface),
-            ),
-          ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(0, 0, 0, 0.35),
+            border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Stack(
+            children: [
+              if (isCurrent)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('Current', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.workspace_premium_outlined, color: accent),
+                        const SizedBox(width: 8),
+                        Text(title,
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(subtitle, style: const TextStyle(color: Colors.white70)),
+                    const SizedBox(height: 10),
+                    ...bullets.map((b) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Padding(
+                                padding: EdgeInsets.only(top: 6.0),
+                                child: Icon(Icons.circle, size: 6, color: Color.fromRGBO(100, 255, 218, 1)),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(child: Text('•', style: TextStyle(color: Colors.transparent))),
+                            ],
+                          ),
+                        )),
+                    // Rebuild bullet lines using actual texts to keep formatting
+                    ...bullets.map((b) => Padding(
+                          padding: const EdgeInsets.only(left: 20.0, bottom: 4.0),
+                          child: Text(b, style: const TextStyle(color: Colors.white)),
+                        )),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isCurrent ? null : onMonthly,
+                            child: Text(isCurrent ? 'Current Plan' : 'Choose Monthly'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: isCurrent ? null : onYearly,
+                            child: const Text('Choose Yearly'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

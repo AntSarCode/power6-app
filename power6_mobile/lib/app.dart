@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'ui/theme.dart';
 import 'screens/login_screen.dart';
-import 'navigation/main_nav.dart';
-import 'ui/theme.dart'; //
+import 'navigation/power_main_nav.dart';
 
 class PowerApp extends StatelessWidget {
   const PowerApp({super.key});
@@ -14,7 +14,7 @@ class PowerApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/': (context) => const MainNav(),
+        '/': (context) => const PowerMainNav(),
       },
     );
   }

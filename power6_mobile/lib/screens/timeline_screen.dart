@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
@@ -21,7 +22,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize to avoid LateInitializationError on first build
     _taskHistory = Future.value(<Task>[]);
     _loadTaskHistory();
   }
@@ -38,8 +38,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
       return;
     }
 
-    // Uses TaskService, which now routes through centralized ApiService base — no localhost.
-    final response = await TaskService.fetchTodayTasks(token); // TODO: swap to real history endpoint when available
+    // TODO: Swap to real history endpoint when available
+    final response = await TaskService.fetchTodayTasks(token);
 
     if (!mounted) return;
 
@@ -58,8 +58,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
     return TierGuard(
       requiredTier: UserTier.pro,
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
           title: const Text('Task Timeline'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           actions: [
             IconButton(
               tooltip: 'Refresh',
@@ -68,78 +71,167 @@ class _TimelineScreenState extends State<TimelineScreen> {
             ),
           ],
         ),
-        body: LayoutBuilder(
-          builder: (context, constraints) => RefreshIndicator(
-            onRefresh: _loadTaskHistory,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: FutureBuilder<List<Task>>(
-                    future: _taskHistory,
-                    initialData: const <Task>[],
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+        body: Stack(
+          children: [
+            // Unified dark gradient background (same as other screens)
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0A0F12),
+                    Color.fromRGBO(15, 31, 36, 0.95),
+                    Color(0xFF0A0F12),
+                  ],
+                ),
+              ),
+            ),
 
-                      if (snapshot.hasError) {
-                        return _ErrorPanel(message: snapshot.error?.toString() ?? 'Failed to load timeline', onRetry: _loadTaskHistory);
-                      }
-
-                      final items = snapshot.data ?? <Task>[];
-                      if (items.isEmpty) {
-                        return _EmptyState(message: _softError ?? 'No task history available.', onRetry: _loadTaskHistory);
-                      }
-
-                      final tasksByDate = _groupTasksByDate(items);
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: tasksByDate.entries.map((entry) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              ExpansionTile(
-                                title: Text(
-                                  entry.key,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                children: entry.value
-                                    .map((task) => TaskCard(
-                                          title: task.title,
-                                          description: task.notes,
-                                          isCompleted: task.completed,
-                                          onTap: () {},
-                                        ))
-                                    .toList(),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          );
-                        }).toList(),
-                      );
-                    },
+            // Decorative teal glow
+            Positioned(
+              top: -120,
+              right: -80,
+              child: SizedBox(
+                width: 300,
+                height: 300,
+                child: ClipOval(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                    child: Container(color: const Color.fromRGBO(15, 179, 160, 0.32)),
                   ),
                 ),
               ),
             ),
-          ),
+
+            LayoutBuilder(
+              builder: (context, constraints) => RefreshIndicator(
+                onRefresh: _loadTaskHistory,
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: IntrinsicHeight(
+                        child: FutureBuilder<List<Task>>(
+                          future: _taskHistory,
+                          initialData: const <Task>[],
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const SizedBox(
+                                height: 300,
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+
+                            if (snapshot.hasError) {
+                              return _ErrorPanel(
+                                message: snapshot.error?.toString() ?? 'Failed to load timeline',
+                                onRetry: _loadTaskHistory,
+                              );
+                            }
+
+                            final items = snapshot.data ?? <Task>[];
+                            if (items.isEmpty) {
+                              return _EmptyState(
+                                message: _softError ?? 'No task history available.',
+                                onRetry: _loadTaskHistory,
+                              );
+                            }
+
+                            final tasksByDate = _groupTasksByDate(items);
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: tasksByDate.entries.map((entry) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: _GlassPanel(
+                                    child: Theme(
+                                      data: Theme.of(context).copyWith(
+                                        dividerColor: const Color.fromRGBO(255, 255, 255, 0.08),
+                                        splashColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                      ),
+                                      child: ExpansionTile(
+                                        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                        childrenPadding: const EdgeInsets.only(bottom: 8),
+                                        title: Text(
+                                          entry.key,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(fontWeight: FontWeight.w700),
+                                        ),
+                                        trailing: const Icon(Icons.expand_more, color: Colors.white70),
+                                        iconColor: Colors.white,
+                                        collapsedIconColor: Colors.white70,
+                                        textColor: Colors.white,
+                                        collapsedTextColor: Colors.white,
+                                        children: entry.value
+                                            .map((task) => Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                                  child: TaskCard(
+                                                    title: task.title,
+                                                    description: task.notes,
+                                                    isCompleted: task.completed,
+                                                    onTap: () {},
+                                                  ),
+                                                ))
+                                            .toList(),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       fallback: Scaffold(
-        appBar: AppBar(title: const Text('Task Timeline')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Text(
-              'This feature is available to Pro users only.',
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: const Text('Task Timeline'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0A0F12),
+                    Color.fromRGBO(15, 31, 36, 0.95),
+                    Color(0xFF0A0F12),
+                  ],
+                ),
+              ),
             ),
-          ),
+            Center(
+              child: _GlassPanel(
+                child: const Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: Text(
+                    'This feature is available to Pro users only.',
+                    style: TextStyle(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -148,10 +240,34 @@ class _TimelineScreenState extends State<TimelineScreen> {
   Map<String, List<Task>> _groupTasksByDate(List<Task> tasks) {
     final Map<String, List<Task>> grouped = {};
     for (var task in tasks) {
-      final dateKey = task.scheduledFor.toString().split(' ')[0];
+      final date = task.scheduledFor;
+      final dateKey = DateTime(date.year, date.month, date.day).toIso8601String().split('T').first;
       grouped.putIfAbsent(dateKey, () => <Task>[]).add(task);
     }
     return grouped;
+  }
+}
+
+class _GlassPanel extends StatelessWidget {
+  final Widget child;
+  const _GlassPanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromRGBO(0, 0, 0, 0.35),
+            border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: child,
+        ),
+      ),
+    );
   }
 }
 
@@ -162,15 +278,24 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 80),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 80.0),
+      child: Center(
+        child: _GlassPanel(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.history_toggle_off, color: Colors.tealAccent),
+                const SizedBox(height: 8),
+                Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
+                const SizedBox(height: 12),
+                ElevatedButton(onPressed: onRetry, child: const Text('Refresh')),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -183,15 +308,24 @@ class _ErrorPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 80),
-          Text('Error: $message', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 80.0),
+      child: Center(
+        child: _GlassPanel(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent),
+                const SizedBox(height: 8),
+                Text('Error: $message', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+                const SizedBox(height: 12),
+                ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
