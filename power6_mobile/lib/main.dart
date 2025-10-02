@@ -9,9 +9,9 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/streak_screen.dart';
 import 'screens/timeline_screen.dart';
-import 'screens/badge_screen.dart';
-import 'screens/subscription_screen.dart';
-import 'navigation/main_nav.dart';
+import 'screens/power_badge_screen.dart';
+import 'screens/subscription_screen.dart' as subs;
+import 'navigation/power_main_nav.dart';
 
 // Services
 import 'services/streak_service.dart';
@@ -42,13 +42,14 @@ class Power6App extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         home: const _RootGate(),
         routes: {
-          '/home': (ctx) => const MainNav(),
+          '/home': (ctx) => const PowerMainNav(),
           '/login': (ctx) => const LoginScreen(),
           '/signup': (ctx) => const SignUpScreen(),
           '/streak': (ctx) => const StreakScreen(),
           '/timeline': (ctx) => const TimelineScreen(),
-          '/badges': (ctx) => const BadgeScreen(),          '/upgrade': (ctx) => const SubscriptionScreen(),
-          '/subscribe': (ctx) => const SubscriptionScreen(),
+          '/badges': (ctx) => const PowerBadgeScreen(),
+          '/upgrade': (ctx) => const subs.SubscriptionScreen(),
+          '/subscribe': (ctx) => const subs.SubscriptionScreen(),
         },
         onUnknownRoute: (settings) => MaterialPageRoute(
           builder: (_) => const LoginScreen(),
