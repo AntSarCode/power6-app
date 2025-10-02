@@ -11,7 +11,7 @@ import 'screens/streak_screen.dart';
 import 'screens/timeline_screen.dart';
 import 'screens/power_badge_screen.dart';
 import 'screens/subscription_screen.dart' as subs;
-import 'navigation/power_main_nav.dart';
+import 'navigation/main_nav.dart';
 
 // Services
 import 'services/streak_service.dart';
@@ -42,7 +42,7 @@ class Power6App extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         home: const _RootGate(),
         routes: {
-          '/home': (ctx) => const PowerMainNav(),
+          '/home': (ctx) => const MainNav(),
           '/login': (ctx) => const LoginScreen(),
           '/signup': (ctx) => const SignUpScreen(),
           '/streak': (ctx) => const StreakScreen(),
