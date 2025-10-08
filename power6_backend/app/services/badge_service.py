@@ -6,6 +6,8 @@ from datetime import datetime
 def get_user_badges(db: Session, user_id: int):
     return db.query(UserBadge).filter(UserBadge.user_id == user_id).all()
 
+
+# noinspection PyArgumentList
 def evaluate_and_assign_badges(db: Session, user_id: int):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
