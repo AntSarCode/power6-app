@@ -39,7 +39,13 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
 
     if (response.isSuccess && response.data != null) {
       final items = response.data ?? <Task>[];
-      setState(() => _todayTasks = Future.value(items));
+      // Filter out completed tasks from previous days
+      final today = DateTime.now();
+      final filtered = items.where((t) {
+        final isToday = t.scheduledFor.year == today.year && t.scheduledFor.month == today.month && t.scheduledFor.day == today.day;
+        return !t.completed || isToday;
+      }).toList();
+      setState(() => _todayTasks = Future.value(filtered));
     } else {
       final err = (response.error ?? '').toLowerCase();
       if (err.contains('no tasks') || err.contains('not found') || err.contains('404')) {
@@ -78,7 +84,6 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       ),
       body: Stack(
         children: [
-          // Unified dark gradient background
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -92,8 +97,6 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
               ),
             ),
           ),
-
-          // Decorative teal glow
           Positioned(
             left: -110,
             top: -90,
@@ -108,7 +111,6 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
               ),
             ),
           ),
-
           RefreshIndicator(
             onRefresh: _loadTasks,
             child: SafeArea(
@@ -207,32 +209,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
   }
 }
 
-class _DailyProgressBar extends StatelessWidget {
-  final int completed;
-  final int total;
-  const _DailyProgressBar({required this.completed, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (total == 0) ? 0.0 : (completed / total).clamp(0, 1).toDouble();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: LinearProgressIndicator(
-            minHeight: 8,
-            value: pct,
-            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.08),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color.fromRGBO(15, 179, 160, 0.85)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text('$completed of $total tasks', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60)),
-      ],
-    );
-  }
-}
+typedef RetryCallback = Future<void> Function();
 
 class _GlassPanel extends StatelessWidget {
   final Widget child;
@@ -259,7 +236,7 @@ class _GlassPanel extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final String message;
-  final Future<void> Function() onRetry;
+  final RetryCallback onRetry;
   const _EmptyState({required this.message, required this.onRetry});
 
   @override
@@ -289,7 +266,7 @@ class _EmptyState extends StatelessWidget {
 
 class _ErrorPanel extends StatelessWidget {
   final String message;
-  final Future<void> Function() onRetry;
+  final RetryCallback onRetry;
   const _ErrorPanel({required this.message, required this.onRetry});
 
   @override
@@ -313,6 +290,33 @@ class _ErrorPanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DailyProgressBar extends StatelessWidget {
+  final int completed;
+  final int total;
+  const _DailyProgressBar({required this.completed, required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (total == 0) ? 0.0 : (completed / total).clamp(0, 1).toDouble();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: LinearProgressIndicator(
+            minHeight: 8,
+            value: pct,
+            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.08),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color.fromRGBO(15, 179, 160, 0.85)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text('$completed of $total tasks', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60)),
+      ],
     );
   }
 }

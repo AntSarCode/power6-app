@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../state/app_state.dart';
 import '../models/task.dart';
 import '../services/task_service.dart';
 
@@ -43,7 +45,11 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
     );
 
     try {
-      await TaskService.addTask(newTask);
+      final token = context.read<AppState>().accessToken;
+      if (token == null || token.isEmpty) {
+        throw Exception('Not authenticated');
+      }
+      await TaskService.saveTask(newTask, token);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Task "$title" saved successfully!')),
@@ -82,7 +88,6 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       ),
       body: Stack(
         children: [
-          // Unified dark gradient background (same as other screens)
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -96,8 +101,6 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
               ),
             ),
           ),
-
-          // Decorative teal glow
           Positioned(
             top: -110,
             right: -60,
@@ -112,7 +115,6 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
               ),
             ),
           ),
-
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
@@ -147,8 +149,6 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                 style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                               ),
                               const SizedBox(height: 16),
-
-                              // Task title
                               TextField(
                                 controller: _controller,
                                 style: const TextStyle(color: Colors.white),
@@ -158,10 +158,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                   icon: Icons.edit_outlined,
                                 ),
                               ),
-
                               const SizedBox(height: 16),
-
-                              // Priority segmented chips
                               Text('Priority', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white70)),
                               const SizedBox(height: 8),
                               Wrap(
@@ -182,10 +179,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                   );
                                 }).toList(),
                               ),
-
                               const SizedBox(height: 16),
-
-                              // Streak bound switch tile
                               Container(
                                 decoration: BoxDecoration(
                                   color: const Color.fromRGBO(255, 255, 255, 0.06),
@@ -197,16 +191,14 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                   subtitle: const Text('Counts toward your daily 6 for streaks', style: TextStyle(color: Colors.white70)),
                                   value: _streakBound,
                                   onChanged: (v) => setState(() => _streakBound = v),
-                                  activeColor: Colors.black,
+                                  activeThumbColor: Colors.black,
                                   activeTrackColor: const Color.fromRGBO(100, 255, 218, 0.9),
                                 ),
                               ),
-
                               if (_error != null) ...[
                                 const SizedBox(height: 10),
                                 Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
                               ],
-
                               const SizedBox(height: 20),
                               SizedBox(
                                 height: 48,
