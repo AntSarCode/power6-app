@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +180,12 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
                                   onChanged: (_) => _toggleTaskCompletion(task),
                                   side: const BorderSide(color: Color.fromRGBO(0, 150, 136, 0.8)),
                                   checkColor: Colors.black,
-                                  activeColor: const Color.fromRGBO(100, 255, 218, 0.9),
+                                  fillColor: MaterialStateProperty.resolveWith<Color?>((states) {
+                                    if (states.contains(MaterialState.selected)) {
+                                      return const Color.fromRGBO(100, 255, 218, 0.9);
+                                    }
+                                    return const Color.fromRGBO(255, 255, 255, 0.15);
+                                  }),
                                 ),
                                 title: Text(
                                   task.title,
