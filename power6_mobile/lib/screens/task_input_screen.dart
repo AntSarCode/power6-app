@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -191,8 +193,18 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                   subtitle: const Text('Counts toward your daily 6 for streaks', style: TextStyle(color: Colors.white70)),
                                   value: _streakBound,
                                   onChanged: (v) => setState(() => _streakBound = v),
-                                  activeThumbColor: Colors.black,
-                                  activeTrackColor: const Color.fromRGBO(100, 255, 218, 0.9),
+                                  thumbColor: MaterialStateProperty.resolveWith<Color?>((states) {
+                                    if (states.contains(MaterialState.selected)) {
+                                      return const Color.fromRGBO(100, 255, 218, 0.95);
+                                    }
+                                    return Colors.white70;
+                                  }),
+                                  trackColor: MaterialStateProperty.resolveWith<Color?>((states) {
+                                    if (states.contains(MaterialState.selected)) {
+                                      return const Color.fromRGBO(0, 150, 136, 0.7);
+                                    }
+                                    return const Color.fromRGBO(255, 255, 255, 0.18);
+                                  }),
                                 ),
                               ),
                               if (_error != null) ...[
