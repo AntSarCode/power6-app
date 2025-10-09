@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/streak_badge.dart';
 import '../widgets/task_card.dart';
 import '../state/app_state.dart';
 
@@ -9,6 +8,8 @@ class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   static const String _appVersion = "1.0"; // label current edition
+  static const String _graphicsBase = 'assets/graphics';
+  static const String _logoAsset = '$_graphicsBase/power6_logo.png';
 
   @override
   Widget build(BuildContext context) {
@@ -81,19 +82,36 @@ class HomeScreen extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(0, 0, 0, 0.35),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.35)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.local_fire_department_rounded, size: 16, color: Color.fromRGBO(100, 255, 218, 0.9)),
+                                    const SizedBox(width: 6),
+                                    Text('Streak: $streak', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // App logo for brand continuity
+                              ColorFiltered(
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                child: Image.asset(
+                                  _logoAsset,
+                                  height: 28,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Row(children: [
-                            StreakBadge(streakCount: streak, isActive: streak > 0),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                "You're on a $streak-day streak. Keep it going!",
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                              ),
-                            ),
-                          ]),
                           const SizedBox(height: 8),
                           // Daily progress bar toward 6 tasks
                           _DailyProgressBar(completed: tasks.where((t) => t.completed).length, total: 6),

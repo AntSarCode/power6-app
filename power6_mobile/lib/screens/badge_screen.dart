@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-const _badgeAssetBase = 'lib/assets/badges';
+const _badgeAssetBase = 'assets/badges';
 
 class BadgeScreen extends StatelessWidget {
   const BadgeScreen({super.key});
