@@ -10,7 +10,9 @@ class PowerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Power6',
-      theme: appTheme,
+      theme: buildDarkTheme(), // corrected from appTheme
+      darkTheme: buildDarkTheme(),
+      themeMode: ThemeMode.dark,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),

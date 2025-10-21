@@ -16,12 +16,17 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final cs = Theme.of(context).colorScheme;
+
+    return InkWell(
       onTap: onTap,
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 3,
-        color: isCompleted ? Colors.green.shade100 : Colors.white,
+        elevation: 0,
+        // Use themed surface tones instead of white.
+        color: isCompleted
+            ? cs.surface.withOpacity(0.16)
+            : cs.surface.withOpacity(0.10),
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -31,8 +36,9 @@ class TaskCard extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   decoration: isCompleted ? TextDecoration.lineThrough : null,
                 ),
               ),
@@ -41,8 +47,8 @@ class TaskCard extends StatelessWidget {
                 Text(
                   description!,
                   style: TextStyle(
+                    color: cs.onSurface.withOpacity(0.70),
                     fontSize: 14,
-                    color: Colors.grey.shade700,
                     decoration: isCompleted ? TextDecoration.lineThrough : null,
                   ),
                 ),

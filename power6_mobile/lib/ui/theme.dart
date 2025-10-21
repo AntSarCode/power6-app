@@ -1,74 +1,87 @@
 import 'package:flutter/material.dart';
 
-// Brand palette
-const kBrandTeal = Color(0xFF008080);
-const kBg = Color(0xFF121212);
-const kSurface = Color(0xFF142021);
-const kInputBg = Color(0xFF102A2A);
+const Color kBrandSeed = Color(0xFFFF6A00);
+const Color kScaffoldDark = Color(0xFF0B1416);
 
-final ThemeData appTheme = ThemeData(
-  useMaterial3: false,
-  brightness: Brightness.dark,
-  primarySwatch: Colors.teal,
-  primaryColor: kBrandTeal,
-  scaffoldBackgroundColor: kBg,
-  fontFamily: 'Roboto',
-  appBarTheme: const AppBarTheme(
-    backgroundColor: kBrandTeal,
-    foregroundColor: Colors.white,
-    elevation: 4,
-    shadowColor: Colors.black54,
-    titleTextStyle: TextStyle(
-      fontWeight: FontWeight.w700,
-      fontSize: 20,
-      color: Colors.white,
+ThemeData buildDarkTheme() {
+  final cs = ColorScheme.fromSeed(
+    seedColor: kBrandSeed,
+    brightness: Brightness.dark,
+  );
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: cs,
+    scaffoldBackgroundColor: kScaffoldDark,
+    canvasColor: Colors.transparent,
+    cardColor: cs.surface.withOpacity(0.10),
+    dialogBackgroundColor: cs.surface,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: false,
     ),
-    iconTheme: IconThemeData(color: Colors.white),
-  ),
-  textTheme: const TextTheme(
-    bodyMedium: TextStyle(color: Colors.white70),
-    bodyLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-    titleLarge: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-  ),
-  inputDecorationTheme: const InputDecorationTheme(
-    filled: true,
-    fillColor: kInputBg,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(12)),
-      borderSide: BorderSide.none,
+    iconTheme: IconThemeData(color: cs.onSurfaceVariant),
+    dividerColor: cs.outlineVariant.withOpacity(0.40),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: cs.surface.withOpacity(0.08),
+      hintStyle: TextStyle(color: cs.onSurfaceVariant.withOpacity(0.70)),
+      labelStyle: TextStyle(color: cs.onSurfaceVariant),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outlineVariant.withOpacity(0.35)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.secondary),
+      ),
     ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(12)),
-      borderSide: BorderSide(color: kBrandTeal, width: 2),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ButtonStyle(
+        padding: WidgetStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return cs.secondary.withOpacity(0.40);
+          }
+          return cs.secondary;
+        }),
+        foregroundColor: WidgetStateProperty.all(cs.onSecondary),
+        elevation: WidgetStateProperty.all(0),
+      ),
     ),
-    labelStyle: TextStyle(color: Colors.white70),
-    hintStyle: TextStyle(color: Colors.white54),
-  ),
-  textSelectionTheme: const TextSelectionThemeData(
-    cursorColor: Colors.white,
-    selectionHandleColor: Colors.white,
-    selectionColor: Color(0x3348D1CC),
-  ),
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: kBrandTeal,
-      foregroundColor: Colors.white,
-      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(30))),
-      elevation: 6,
-      shadowColor: Colors.black45,
+    chipTheme: ChipThemeData(
+      backgroundColor: cs.surface.withOpacity(0.18),
+      selectedColor: cs.secondary.withOpacity(0.25),
+      disabledColor: cs.surface.withOpacity(0.10),
+      side: BorderSide(color: cs.outlineVariant.withOpacity(0.40)),
+      labelStyle: TextStyle(color: cs.onSurface),
     ),
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: kSurface,
-    selectedItemColor: kBrandTeal,
-    unselectedItemColor: Colors.white60,
-    selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
-  ),
-  snackBarTheme: const SnackBarThemeData(
-    backgroundColor: kBrandTeal,
-    contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-    behavior: SnackBarBehavior.floating,
-  ),
-);
+    listTileTheme: const ListTileThemeData(
+      tileColor: Colors.transparent,
+      horizontalTitleGap: 12,
+      dense: true,
+    ),
+  );
+}
+ThemeData buildLightTheme() {
+  final cs = ColorScheme.fromSeed(
+    seedColor: kBrandSeed,
+    brightness: Brightness.light,
+  );
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: cs,
+    scaffoldBackgroundColor: Colors.white,
+  );
+}

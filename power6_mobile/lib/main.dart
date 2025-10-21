@@ -37,7 +37,9 @@ class Power6App extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Power6',
-        theme: appTheme, // unified dark theme from /ui/theme.dart
+        theme: buildDarkTheme(), // corrected reference
+        darkTheme: buildDarkTheme(),
+        themeMode: ThemeMode.dark,
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: scaffoldMessengerKey,
         home: const _RootGate(),
