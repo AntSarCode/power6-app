@@ -17,6 +17,7 @@ class HomeScreen extends StatelessWidget {
     final tasks = appState.tasks;
     final user = appState.user?.username ?? "User";
     final streak = appState.currentStreak;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -52,7 +53,7 @@ class HomeScreen extends StatelessWidget {
               child: ClipOval(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.32)),
+                  child: Container(color: cs.secondary.withOpacity(0.32)),
                 ),
               ),
             ),
@@ -74,41 +75,38 @@ class HomeScreen extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const Icon(Icons.local_fire_department_rounded, size: 28, color: Colors.tealAccent),
+                              Icon(Icons.local_fire_department_rounded, size: 28, color: cs.secondary),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Welcome, $user',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: const Color.fromRGBO(0, 0, 0, 0.35),
+                                  color: cs.surface.withOpacity(0.18),
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.35)),
+                                  border: Border.all(color: cs.outlineVariant.withOpacity(0.40)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.local_fire_department_rounded, size: 16, color: Color.fromRGBO(100, 255, 218, 0.9)),
+                                    Icon(Icons.local_fire_department_rounded, size: 16, color: cs.secondary),
                                     const SizedBox(width: 6),
-                                    Text('Streak: $streak', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                    Text('Streak: $streak', style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // App logo for brand continuity
-                              ColorFiltered(
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                child: Image.asset(
-                                  _logoAsset,
-                                  height: 28,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                                ),
+                              // App logo for brand continuity (no forced white filter)
+                              Image.asset(
+                                _logoAsset,
+                                height: 28,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                               ),
                             ],
                           ),
@@ -131,7 +129,7 @@ class HomeScreen extends StatelessWidget {
 
                   // Tasks section
                   Text('Today\'s Tasks',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                   const SizedBox(height: 8),
                   if (tasks.isEmpty)
                     _GlassPanel(
@@ -140,12 +138,12 @@ class HomeScreen extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.tips_and_updates_outlined, color: Colors.tealAccent),
+                            Icon(Icons.tips_and_updates_outlined, color: cs.secondary),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'No tasks yet. Add up to six and we\'ll help you prioritize. Unfinished tasks roll over to tomorrow.',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
                               ),
                             ),
                           ],
@@ -189,6 +187,7 @@ class _DailyProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final pct = (completed / total).clamp(0, 1).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,12 +197,13 @@ class _DailyProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             minHeight: 8,
             value: pct,
-            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.08),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color.fromRGBO(15, 179, 160, 0.85)),
+            backgroundColor: cs.surface.withOpacity(0.12),
+            valueColor: AlwaysStoppedAnimation<Color>(cs.secondary),
           ),
         ),
         const SizedBox(height: 6),
-        Text('$completed of $total tasks', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60)),
+        Text('$completed of $total tasks',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70))),
       ],
     );
   }
@@ -215,14 +215,15 @@ class _GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(0, 0, 0, 0.35),
-            border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+            color: cs.surface.withOpacity(0.12),
+            border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
             borderRadius: BorderRadius.circular(16),
           ),
           child: child,
@@ -238,6 +239,7 @@ class _AboutSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -245,16 +247,16 @@ class _AboutSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Colors.tealAccent),
+              Icon(Icons.info_outline, color: cs.secondary),
               const SizedBox(width: 8),
               Text('About Power6 (v$version)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             'Power6 is designed around behavioral science to make consistency feel natural:',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
           ),
           const SizedBox(height: 8),
           const _Bullet('Six-task focus limits cognitive load and reduces planning friction.'),
@@ -265,7 +267,7 @@ class _AboutSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Edition: v$version',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54, fontStyle: FontStyle.italic),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.60), fontStyle: FontStyle.italic),
           ),
         ],
       ),
@@ -278,17 +280,23 @@ class _Bullet extends StatelessWidget {
   const _Bullet(this.text);
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: Color.fromRGBO(100, 255, 218, 0.9)),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Icon(Icons.circle, size: 6, color: cs.secondary),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70))),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
+            ),
+          ),
         ],
       ),
     );
