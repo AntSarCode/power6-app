@@ -7,9 +7,8 @@ import '../state/app_state.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  static const String _appVersion = "1.0"; // label current edition
+  static const String _appVersion = "1.0";
   static const String _graphicsBase = 'assets/graphics';
-  static const String _logoAsset = '$_graphicsBase/power6_logo.png';
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +21,34 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Power6 Dashboard'),
+        centerTitle: true,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              '$_graphicsBase/power6_logo.png',
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Power6',
+              style: const TextStyle(
+                fontFamily: 'Montserrat', // adjust to match logo font
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Stack(
         children: [
-          // Unified dark gradient background (same theme as login/signup)
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -42,8 +62,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Decorative teal glow
           Positioned(
             top: -130,
             right: -70,
@@ -58,14 +76,21 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Header Hero Panel
+                  Text(
+                    'Dashboard',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                  ),
+                  const SizedBox(height: 16),
                   _GlassPanel(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -80,7 +105,10 @@ class HomeScreen extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   'Welcome, $user',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -96,40 +124,30 @@ class HomeScreen extends StatelessWidget {
                                   children: [
                                     Icon(Icons.local_fire_department_rounded, size: 16, color: cs.secondary),
                                     const SizedBox(width: 6),
-                                    Text('Streak: $streak', style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
+                                    Text('Streak: $streak',
+                                        style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              // App logo for brand continuity (no forced white filter)
-                              Image.asset(
-                                _logoAsset,
-                                height: 28,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // Daily progress bar toward 6 tasks
-                          _DailyProgressBar(completed: tasks.where((t) => t.completed).length, total: 6),
+                          _DailyProgressBar(
+                              completed: tasks.where((t) => t.completed).length, total: 6),
                         ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // About Section
                   _GlassPanel(
                     child: _AboutSection(version: _appVersion),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Tasks section
                   Text('Today\'s Tasks',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                   const SizedBox(height: 8),
                   if (tasks.isEmpty)
                     _GlassPanel(
@@ -143,7 +161,10 @@ class HomeScreen extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 'No tasks yet. Add up to six and we\'ll help you prioritize. Unfinished tasks roll over to tomorrow.',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
                               ),
                             ),
                           ],
@@ -203,7 +224,10 @@ class _DailyProgressBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text('$completed of $total tasks',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70))),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70))),
       ],
     );
   }
@@ -249,14 +273,20 @@ class _AboutSection extends StatelessWidget {
             children: [
               Icon(Icons.info_outline, color: cs.secondary),
               const SizedBox(width: 8),
-              Text('About Power6 (v$version)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
+              Text('About (v$version)',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             'Power6 is designed around behavioral science to make consistency feel natural:',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
           ),
           const SizedBox(height: 8),
           const _Bullet('Six-task focus limits cognitive load and reduces planning friction.'),
@@ -267,7 +297,10 @@ class _AboutSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Edition: v$version',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.60), fontStyle: FontStyle.italic),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.60), fontStyle: FontStyle.italic),
           ),
         ],
       ),
@@ -278,6 +311,7 @@ class _AboutSection extends StatelessWidget {
 class _Bullet extends StatelessWidget {
   final String text;
   const _Bullet(this.text);
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -287,14 +321,17 @@ class _Bullet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: cs.secondary),
+            padding: const EdgeInsets.only(top: 4),
+            child: Icon(Icons.check_circle_outline, size: 16, color: cs.secondary),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
             ),
           ),
         ],
