@@ -21,29 +21,20 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        centerTitle: true,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
+        automaticallyImplyLeading: false,
+        centerTitle: false,
+        title: const SizedBox.shrink(),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Image.asset(
               '$_graphicsBase/power6_logo.png',
               height: 28,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'Power6',
-              style: const TextStyle(
-                fontFamily: 'Montserrat', // adjust to match logo font
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -200,6 +191,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
 
 class _DailyProgressBar extends StatelessWidget {
   final int completed;
