@@ -21,10 +21,13 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false, // remove any default back/title on the left
+        title: const SizedBox.shrink(), // no middle title/logo
         centerTitle: false,
-        title: const SizedBox.shrink(),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
+          // Brand mark at top-right only
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Image.asset(
@@ -35,8 +38,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
       body: Stack(
         children: [
