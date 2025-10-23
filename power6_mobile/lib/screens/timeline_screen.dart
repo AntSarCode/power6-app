@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
-import '../services/task_service.dart';
 import '../widgets/task_card.dart';
 import '../utils/access.dart';
 import '../widgets/tier_guard.dart';
@@ -18,6 +17,8 @@ class TimelineScreen extends StatefulWidget {
 class _TimelineScreenState extends State<TimelineScreen> {
   late Future<List<Task>> _taskHistory;
   String? _softError;
+
+  get TaskService => null;
 
   @override
   void initState() {
@@ -241,7 +242,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     final Map<String, List<Task>> grouped = {};
     for (var task in tasks) {
       final date = task.scheduledFor;
-      final dateKey = DateTime(date.year, date.month, date.day).toIso8601String().split('T').first;
+      final dateKey = DateTime(date!.year, date.month, date.day).toIso8601String().split('T').first;
       grouped.putIfAbsent(dateKey, () => <Task>[]).add(task);
     }
     return grouped;

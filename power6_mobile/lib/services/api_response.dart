@@ -2,51 +2,74 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_constants.dart';
 
+/// Lightweight, generic API response wrapper.
 class ApiResponse<T> {
   final T? data;
   final String? error;
+  final int? statusCode;
 
-  bool get isSuccess => error == null && data != null;
+  /// Success is defined as "no error"; `data` may be null for endpoints
+  /// that don't return a body (e.g., POST refresh).
+  bool get isSuccess => error == null;
 
-  ApiResponse({this.data, this.error});
+  const ApiResponse({this.data, this.error, this.statusCode});
 
-  factory ApiResponse.success(T data) => ApiResponse(data: data);
+  factory ApiResponse.success(T data, {int? statusCode}) =>
+      ApiResponse<T>(data: data, statusCode: statusCode);
 
-  factory ApiResponse.failure(String error) => ApiResponse(error: error);
+  factory ApiResponse.failure(String error, {int? statusCode}) =>
+      ApiResponse<T>(error: error, statusCode: statusCode);
 }
 
-
-
+/// Simple HTTP helper used by some services. Most services can also call
+/// `http` directly; this is just a convenience.
 class ApiService {
   final http.Client client;
 
   ApiService({http.Client? httpClient}) : client = httpClient ?? http.Client();
 
-  Future<ApiResponse<Map<String, dynamic>>> get(String endpoint) async {
+  Map<String, String> _defaultHeaders({Map<String, String>? extra}) => {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...?extra,
+      };
+
+  Future<ApiResponse<Map<String, dynamic>>> get(String endpoint,
+      {Map<String, String>? headers}) async {
     try {
-      final response = await client.get(Uri.parse(ApiConstants.baseUrl + endpoint));
-      if (response.statusCode == 200) {
-        return ApiResponse.success(json.decode(response.body));
-      } else {
-        return ApiResponse.failure('Error: \${response.statusCode}');
+      final res = await client.get(
+        Uri.parse(ApiConstants.baseUrl + endpoint),
+        headers: _defaultHeaders(extra: headers),
+      );
+
+      if (res.statusCode == 200) {
+        final body = res.body.isEmpty
+            ? <String, dynamic>{}
+            : (json.decode(res.body) as Map<String, dynamic>);
+        return ApiResponse.success(body, statusCode: res.statusCode);
       }
+      return ApiResponse.failure('Error: ${res.statusCode}', statusCode: res.statusCode);
     } catch (e) {
       return ApiResponse.failure(e.toString());
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> post(String endpoint, Map<String, dynamic> body) async {
+  Future<ApiResponse<Map<String, dynamic>>> post(String endpoint,
+      {Map<String, dynamic>? body, Map<String, String>? headers}) async {
     try {
-      final response = await client.post(
+      final res = await client.post(
         Uri.parse(ApiConstants.baseUrl + endpoint),
-        headers: {'Title-Type': 'application/json'},
-        body: json.encode(body),
+        headers: _defaultHeaders(extra: headers),
+        body: body == null ? null : json.encode(body),
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return ApiResponse.success(json.decode(response.body));
-      } else {
-        return ApiResponse.failure('Error: \${response.statusCode}');
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final decoded = res.body.isEmpty
+            ? <String, dynamic>{}
+            : (json.decode(res.body) as Map<String, dynamic>);
+        return ApiResponse.success(decoded, statusCode: res.statusCode);
       }
+      return ApiResponse.failure('Error: ${res.statusCode}', statusCode: res.statusCode);
     } catch (e) {
       return ApiResponse.failure(e.toString());
     }

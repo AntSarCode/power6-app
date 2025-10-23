@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../models/task.dart';
-import '../services/task_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class TaskInputScreen extends StatefulWidget {
   const TaskInputScreen({super.key});
@@ -51,7 +52,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       if (token == null || token.isEmpty) {
         throw Exception('Not authenticated');
       }
-      await TaskService.saveTask(newTask, token);
+      await _persistTask(newTask, token);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Task "$title" saved successfully!')),
@@ -68,6 +69,26 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
         SnackBar(content: Text('Failed to save task: $e')),
       );
       setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _persistTask(Task task, String token) async {
+    final app = context.read<AppState>();
+    final base = app.apiBaseUrl ?? '';
+    if (base.isEmpty) {
+      throw Exception('Missing API base URL');
+    }
+    final uri = Uri.parse('$base/tasks');
+    final res = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(task.toJson()),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Server responded ${res.statusCode}: ${res.body}');
     }
   }
 

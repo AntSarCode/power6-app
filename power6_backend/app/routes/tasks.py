@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, Date
 from typing import List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import re
 
 from app.models.models import Task as TaskModel
@@ -97,29 +97,111 @@ def create_task(
         streak_bound=task.streak_bound,
         completed_at=task.completed_at,
         user_id=uid,
-        created_at=datetime.now(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
     return db_task
 
-@router.put("/{task_id}", response_model=TaskRead)
-def update_task(task_id: int, updated_task: TaskUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+
+# noinspection DuplicatedCode
+@router.patch("/{task_id}", response_model=TaskRead)
+def patch_task(
+    task_id: int,
+    payload: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # noinspection DuplicatedCode
+    """Partial update with the same completion timestamp invariants as PUT."""
     uid = _coerce_user_id(current_user)
     task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    prev_completed = bool(getattr(task, "completed", False))
+    data = payload.model_dump(exclude_unset=True)
+
+    if "priority" in data:
+        data["priority"] = _priority_to_db(data["priority"])
+
+    completed_provided = "completed" in data
+    new_completed = data.pop("completed", None)
+
+    for k, v in data.items():
+        setattr(task, k, v)
+
+    if completed_provided and new_completed is not None and new_completed != prev_completed:
+        if new_completed:
+            task.completed = True
+            if not getattr(task, "completed_at", None):
+                task.completed_at = datetime.now(timezone.utc)
+        else:
+            task.completed = False
+            task.completed_at = None
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.post("/{task_id}/toggle", response_model=TaskRead)
+def toggle_task_completion(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Flip completion state while keeping completed_at consistent (UTC timestamps)."""
+    uid = _coerce_user_id(current_user)
+    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.completed:
+        task.completed = False
+        task.completed_at = None
+    else:
+        task.completed = True
+        if not getattr(task, "completed_at", None):
+            task.completed_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+# noinspection DuplicatedCode
+@router.put("/{task_id}", response_model=TaskRead)
+def update_task(task_id: int, updated_task: TaskUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # noinspection DuplicatedCode
+    uid = _coerce_user_id(current_user)
+    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    prev_completed = bool(getattr(task, "completed", False))
+
     update_data = updated_task.model_dump(exclude_unset=True)
     if "priority" in update_data:
         update_data["priority"] = _priority_to_db(update_data["priority"])
 
-    # Update fields and auto-set completed_at
+    # Remove 'completed' to handle invariants afterward
+    completed_provided = "completed" in update_data
+    new_completed = update_data.pop("completed", None)
+
+    # Update the rest of the fields first
     for key, value in update_data.items():
         setattr(task, key, value)
-    if task.completed and not task.completed_at:
-        task.completed_at = datetime.now()
+
+    # Maintain completed/completed_at invariants
+    if completed_provided and new_completed is not None and new_completed != prev_completed:
+        if new_completed:
+            task.completed = True
+            if not getattr(task, "completed_at", None):
+                task.completed_at = datetime.now(timezone.utc)
+        else:
+            task.completed = False
+            task.completed_at = None
 
     db.commit()
     db.refresh(task)

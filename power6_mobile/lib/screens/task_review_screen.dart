@@ -1,10 +1,9 @@
 // ignore_for_file: deprecated_member_use
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
-import '../services/task_service.dart';
+import '../services/streak_service.dart';
 import '../state/app_state.dart';
 
 class TaskReviewScreen extends StatefulWidget {
@@ -17,6 +16,13 @@ class TaskReviewScreen extends StatefulWidget {
 class _TaskReviewScreenState extends State<TaskReviewScreen> {
   Future<List<Task>> _todayTasks = Future.value(<Task>[]);
   String? _softError;
+
+  // ADDED: cache for latest tasks to compute threshold flips
+  List<Task> _latestTasks = <Task>[];
+  final StreakService _streakService = StreakService();
+  final int _streakThreshold = 6;
+
+  get TaskService => null;
 
   @override
   void initState() {
@@ -31,6 +37,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
     if (token.isEmpty) {
       setState(() {
         _todayTasks = Future.value(<Task>[]);
+        _latestTasks = <Task>[];
         _softError = 'You are not signed in.';
       });
       return;
@@ -47,25 +54,81 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
         final isToday = t.scheduledFor.year == today.year && t.scheduledFor.month == today.month && t.scheduledFor.day == today.day;
         return !t.completed || isToday;
       }).toList();
-      setState(() => _todayTasks = Future.value(filtered));
+      setState(() {
+        _todayTasks = Future.value(filtered);
+        _latestTasks = filtered;
+      });
     } else {
       final err = (response.error ?? '').toLowerCase();
       if (err.contains('no tasks') || err.contains('not found') || err.contains('404')) {
-        setState(() => _todayTasks = Future.value(<Task>[]));
+        setState(() {
+          _todayTasks = Future.value(<Task>[]);
+          _latestTasks = <Task>[];
+        });
       } else {
         setState(() {
           _softError = response.error ?? 'Failed to fetch tasks';
           _todayTasks = Future.value(<Task>[]);
+          _latestTasks = <Task>[];
         });
       }
     }
   }
 
+  // Helper: same-day check
+  bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // Helper: count streak-eligible completes today
+  int _eligibleCompletedCount(List<Task> items) {
+    if (items.isEmpty) return 0;
+    final now = DateTime.now();
+    int count = 0;
+    for (final t in items) {
+      final completed = t.completed == true;
+      final eligible = (t.streakBound == true);
+      final ca = t.completedAt;
+      if (completed && eligible && ca != null && _isSameDay(ca, now)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   Future<void> _toggleTaskCompletion(Task task) async {
     final token = context.read<AppState>().accessToken ?? '';
     if (token.isEmpty) return;
+
+    // BEFORE: threshold met?
+    final prevEligible = _eligibleCompletedCount(_latestTasks);
+    final wasMet = prevEligible >= _streakThreshold;
+
+    // Predict after-change eligible count (without mutating the list yet)
+    int delta = 0;
+    if (task.streakBound == true) {
+      delta = task.completed ? -1 : 1;
+    }
+    final afterEligible = prevEligible + delta;
+    final isMet = afterEligible >= _streakThreshold;
+
     await TaskService.updateTaskStatus(token, task.id, !task.completed);
-    _loadTasks();
+
+    // Reload tasks to sync UI + cache
+    await _loadTasks();
+
+    // If we just flipped into meeting threshold, refresh streak server-side and pull it into state
+    if (!wasMet && isMet && mounted) {
+      try {
+        final refresh = await _streakService.refreshStreak();
+        if (refresh.isSuccess) {
+          final current = await _streakService.getCurrentStreak();
+          if (current.isSuccess && current.data != null) {
+            await context.read<AppState>().loadStreak();
+          }
+        }
+      } catch (_) {
+        // non-fatal
+      }
+    }
   }
 
   @override

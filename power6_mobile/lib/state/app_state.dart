@@ -1,94 +1,153 @@
+// lib/state/app_state.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../models/task.dart';
-import '../models/user.dart';
-import '../services/task_service.dart';
-import '../services/streak_service.dart';
 
+import 'package:power6_mobile/models/task.dart';
+import 'package:power6_mobile/models/user.dart';
+
+/// Lightweight adapter so AppState doesn't hard-depend on networking files.
+/// Inject a real implementation from your services layer in main.dart.
+abstract class BackendAdapter {
+  Future<List<Task>?> fetchTodayTasks(String token);
+  Future<bool> updateTaskStatus(String token, String taskId, bool completed);
+  Future<int?> getCurrentStreak();
+  Future<bool> refreshStreak();
+}
+
+/// No-op defaults to keep the app compiling even if services are broken.
+class _NoopBackendAdapter implements BackendAdapter {
+  @override
+  Future<List<Task>?> fetchTodayTasks(String token) async => null;
+
+  @override
+  Future<bool> updateTaskStatus(String token, String taskId, bool completed) async => true;
+
+  @override
+  Future<int?> getCurrentStreak() async => null;
+
+  @override
+  Future<bool> refreshStreak() async => true;
+}
+
+/// Global application state (tasks, auth, streak)
 class AppState extends ChangeNotifier {
-  final String _storageKey = 'tasks';
-  List<Task> _tasks = [];
+  // ---------------- Fields ----------------
+  static const String _storageKey = 'tasks';
+
+  final BackendAdapter _backend;
+  final List<Task> _tasks = <Task>[];
+
   String? _authToken;
   User? _user;
   int currentStreak = 0;
 
-  AppState() {
+  // ---------------- Ctors -----------------
+  AppState({BackendAdapter? backend, required String apiBaseUrl}) : _backend = backend ?? _NoopBackendAdapter() {
     _loadTasks();
-    loadStreak();
   }
 
-  List<Task> get tasks => _tasks;
+  // ---------------- Getters --------------
+  List<Task> get tasks => List.unmodifiable(_tasks);
   String? get accessToken => _authToken;
   User? get user => _user;
-  int get completedCount => _tasks.where((task) => task.completed).length;
+
+  int get completedCount => _tasks.where((t) => t.completed).length;
   bool get todayCompleted => completedCount >= 6;
 
+  get apiBaseUrl => null;
+
+  // ---------------- Auth ------------------
   void setAuthToken(String token, {User? user}) {
     _authToken = token;
     _user = user;
-    syncTasks(token);
+    syncTasks();
     loadStreak();
     notifyListeners();
   }
 
-  void toggleTaskCompletion(int index) async {
-    final token = _authToken;
-    if (token == null) return;
-
-    final task = _tasks[index];
-    final updated = task.copyWith(
-      completed: !task.completed,
-      completedAt: task.completed ? null : DateTime.now(),
-    );
-
-    _tasks[index] = updated;
+  void logout() {
+    _authToken = null;
+    _user = null;
+    _tasks.clear();
+    currentStreak = 0;
     notifyListeners();
+  }
 
-    final response = await TaskService.updateTaskStatus(token, task.id, updated.completed);
-    if (response.error != null) {
-      _tasks[index] = task;
+  // ---------------- Streak ----------------
+  void setCurrentStreak(int value) {
+    if (currentStreak == value) return;
+    currentStreak = value;
+    notifyListeners();
+  }
+
+  Future<void> refreshAndLoadStreak() async {
+    if (_authToken == null) return;
+    await _backend.refreshStreak();
+    await loadStreak();
+  }
+
+  Future<void> loadStreak() async {
+    if (_authToken == null) return;
+    final value = await _backend.getCurrentStreak();
+    if (value != null) {
+      currentStreak = value;
       notifyListeners();
     }
-
-    await _persist();
-    loadStreak();
   }
 
+  // ---------------- Tasks -----------------
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final taskList = prefs.getString(_storageKey);
 
+    _tasks.clear();
     if (taskList != null) {
-      final List<dynamic> jsonList = jsonDecode(taskList);
-      _tasks = jsonList.map((item) => Task.fromJson(item)).toList();
-    } else {
-      _tasks = _defaultTasks();
-      await _persist();
+      final List<dynamic> jsonList = jsonDecode(taskList) as List<dynamic>;
+      _tasks.addAll(jsonList
+          .cast<Map<String, dynamic>>()
+          .map((item) => Task.fromJson(item)));
     }
-
+    // No defaults to avoid accidental test data; keep empty on first run.
     notifyListeners();
   }
 
-  Future<void> syncTasks(String token) async {
+  Future<void> syncTasks() async {
+    final token = _authToken;
+    if (token == null) return;
     try {
-      final response = await TaskService.fetchTodayTasks(token);
-      if (response.isSuccess && response.data != null) {
-        _tasks = response.data!;
+      final serverTasks = await _backend.fetchTodayTasks(token);
+      if (serverTasks != null) {
+        _tasks
+          ..clear()
+          ..addAll(serverTasks);
         await _persist();
         notifyListeners();
       }
     } catch (_) {}
   }
 
-  Future<void> loadStreak() async {
+  Future<void> toggleTaskCompletion(int index) async {
     final token = _authToken;
     if (token == null) return;
+    if (index < 0 || index >= _tasks.length) return;
 
-    final response = await StreakService().getCurrentStreak();
-    if (response.isSuccess && response.data != null) {
-      currentStreak = response.data!;
+    final Task original = _tasks[index];
+    final Task updated = original.copyWith(
+      completed: !original.completed,
+      completedAt: original.completed ? null : DateTime.now(),
+    );
+
+    _tasks[index] = updated;
+    notifyListeners();
+
+    final ok = await _backend.updateTaskStatus(token, original.id as String, updated.completed);
+    if (!ok) {
+      _tasks[index] = original;
       notifyListeners();
+    } else {
+      await _persist();
+      await loadStreak();
     }
   }
 
@@ -97,14 +156,4 @@ class AppState extends ChangeNotifier {
     final jsonList = _tasks.map((t) => t.toJson()).toList();
     await prefs.setString(_storageKey, jsonEncode(jsonList));
   }
-
-  void logout() {
-    _authToken = null;
-    _tasks = [];
-    currentStreak = 0;
-    _user = null;
-    notifyListeners();
-  }
-
-  List<Task> _defaultTasks() => [];
 }
