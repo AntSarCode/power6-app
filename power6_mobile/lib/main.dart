@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'ui/theme.dart';
-import 'state/app_state.dart';
+import 'package:power6_mobile/ui/theme.dart';
+import 'package:power6_mobile/state/app_state.dart';
 
 // Screens
-import 'screens/login_screen.dart';
-import 'screens/signup_screen.dart';
-import 'screens/streak_screen.dart';
-import 'screens/timeline_screen.dart';
-import 'screens/power_badge_screen.dart';
-import 'screens/subscription_screen.dart' as subs;
-import 'navigation/main_nav.dart';
+import 'package:power6_mobile/screens/login_screen.dart';
+import 'package:power6_mobile/screens/signup_screen.dart';
+import 'package:power6_mobile/screens/streak_screen.dart';
+import 'package:power6_mobile/screens/timeline_screen.dart';
+import 'package:power6_mobile/screens/power_badge_screen.dart';
+import 'package:power6_mobile/screens/subscription_screen.dart' as subs;
+import 'package:power6_mobile/navigation/main_nav.dart';
 
 // Services
-import 'services/streak_service.dart';
+import 'package:power6_mobile/services/streak_service.dart';
 
 /// Global messenger key so overlays/snackbars can work from anywhere.
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -32,7 +32,11 @@ class Power6App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppState()),
+        ChangeNotifierProvider<AppState>(
+          create: (_) => AppState(
+            apiBaseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: ''),
+          ),
+        ),
         Provider(create: (_) => StreakService()),
       ],
       child: MaterialApp(

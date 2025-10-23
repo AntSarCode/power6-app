@@ -1,79 +1,118 @@
+# app/routes/tasks.py
+from typing import List, Optional
+from datetime import datetime, date, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
+from sqlalchemy import cast, Date
 
-from app.models import models, User  # Removed direct Task import
-from app.routes.auth import get_current_user, get_password_hash
-from app.schemas import schemas
 from app.database import get_db
+from app.models import models
+from app.schemas import schemas
+from app.routes.auth import get_current_user
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
-def get_user_by_username(username: str, db: Session) -> models.User:
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+# --- Helpers -----------------------------------------------------------------
+def _today_utc() -> date:
+    return datetime.now(timezone.utc).date()
 
-@router.get("/streak")
-def get_streak(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+# --- Routes ------------------------------------------------------------------
+@router.get("/today", response_model=List[schemas.TaskRead])
+def get_today_tasks(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Return today's tasks for the current user.
+    A task is considered "today" if its scheduled_for date matches today OR
+    (as a fallback) it was created today.
     """
-    Calculate the user's current task streak based on streak-bound tasks.
-    """
-    # Step 1: Query all completed streak-bound tasks
-    tasks = (
+    today = _today_utc()
+    q = (
         db.query(models.Task)
+        .filter(models.Task.user_id == current_user.id)
         .filter(
-            models.Task.user_id == current_user.id,
-            models.Task.streak_bound == True,
-            models.Task.completed == True,
+            (cast(models.Task.scheduled_for, Date) == today)
+            | (cast(models.Task.created_at, Date) == today)
         )
-        .order_by(models.Task.scheduled_for.desc())  # Most recent first
-        .all()
+        .order_by(models.Task.scheduled_for.asc(), models.Task.created_at.asc())
     )
+    return q.all()
 
-    if not tasks:
-        return {"streak": 0}
 
-    # Step 2: Create a set of all completed dates
-    completed_dates = set(task.scheduled_for.date() for task in tasks if task.scheduled_for)
+@router.patch("/{task_id}", response_model=schemas.TaskRead)
+def update_task(
+    task_id: int,
+    payload: schemas.TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Update a task. Special handling for `completed` to keep `completed_at` correct.
 
-    # Step 3: Count consecutive days from today
-    streak = 0
-    current_day = date.today()
-
-    while current_day in completed_dates:
-        streak += 1
-        current_day -= timedelta(days=1)
-
-    return {"streak": streak}
-
-@router.get("/{username}", response_model=schemas.UserRead, status_code=status.HTTP_200_OK)
-def get_user(username: str, db: Session = Depends(get_db)):
-    return get_user_by_username(username, db)
-
-@router.post("/", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.username == user.username).first():
-        raise HTTPException(status_code=400, detail="Username already exists")
-    if db.query(models.User).filter(models.User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    hashed_password = get_password_hash(user.password)
-    db_user = models.User(
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed_password,
-        tier=user.tier
+    Rules:
+    - When `completed` flips from False -> True: set `completed_at` to now (UTC) if not already set.
+    - When `completed` flips from True  -> False: clear `completed_at`.
+    - All other fields follow your existing `TaskUpdate` semantics.
+    """
+    task = (
+        db.query(models.Task)
+        .filter(models.Task.id == task_id, models.Task.user_id == current_user.id)
+        .first()
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    prev_completed: Optional[bool] = getattr(task, "completed", None)
 
-@router.put("/{username}/tier", status_code=status.HTTP_200_OK)
-def update_user_tier(username: str, payload: schemas.UserTierUpdate, db: Session = Depends(get_db)):
-    user = get_user_by_username(username, db)
-    user.tier = payload.tier
+    data = payload.model_dump(exclude_unset=True)
+
+    completed_provided = "completed" in data
+    new_completed = data.pop("completed", None)
+
+    for key, val in data.items():
+        setattr(task, key, val)
+
+    # --- Completed / completed_at ---
+    if completed_provided and new_completed is not None and new_completed != prev_completed:
+        if new_completed:
+            task.completed = True
+            if not getattr(task, "completed_at", None):
+                task.completed_at = datetime.now(timezone.utc)
+        else:
+            task.completed = False
+            task.completed_at = None
+
+    db.add(task)
     db.commit()
-    return {"message": f"Tier updated to '{payload.tier}' for user '{username}'"}
+    db.refresh(task)
+    return task
+
+
+@router.post("/{task_id}/toggle", response_model=schemas.TaskRead)
+def toggle_task_completion(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Convenience endpoint used by some clients to flip completion state.
+    Keeps `completed_at` in sync with the rules above.
+    """
+    task = (
+        db.query(models.Task)
+        .filter(models.Task.id == task_id, models.Task.user_id == current_user.id)
+        .first()
+    )
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    if task.completed:
+        task.completed = False
+        task.completed_at = None
+    else:
+        task.completed = True
+        if not getattr(task, "completed_at", None):
+            task.completed_at = datetime.now(timezone.utc)
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
