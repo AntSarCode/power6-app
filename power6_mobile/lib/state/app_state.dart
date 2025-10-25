@@ -1,4 +1,3 @@
-// lib/state/app_state.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,8 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:power6_mobile/models/task.dart';
 import 'package:power6_mobile/models/user.dart';
 
-/// Lightweight adapter so AppState doesn't hard-depend on networking files.
-/// Inject a real implementation from your services layer in main.dart.
+/// Lightweight adapter. Implementations handle actual backend calls.
 abstract class BackendAdapter {
   Future<List<Task>?> fetchTodayTasks(String token);
   Future<bool> updateTaskStatus(String token, String taskId, bool completed);
@@ -42,8 +40,10 @@ class AppState extends ChangeNotifier {
   User? _user;
   int currentStreak = 0;
 
+  final String? apiBaseUrl;
+
   // ---------------- Ctors -----------------
-  AppState({BackendAdapter? backend, required String apiBaseUrl}) : _backend = backend ?? _NoopBackendAdapter() {
+  AppState({this.apiBaseUrl, BackendAdapter? backend}) : _backend = backend ?? _NoopBackendAdapter() {
     _loadTasks();
   }
 
@@ -54,8 +54,6 @@ class AppState extends ChangeNotifier {
 
   int get completedCount => _tasks.where((t) => t.completed).length;
   bool get todayCompleted => completedCount >= 6;
-
-  get apiBaseUrl => null;
 
   // ---------------- Auth ------------------
   void setAuthToken(String token, {User? user}) {
@@ -108,7 +106,6 @@ class AppState extends ChangeNotifier {
           .cast<Map<String, dynamic>>()
           .map((item) => Task.fromJson(item)));
     }
-    // No defaults to avoid accidental test data; keep empty on first run.
     notifyListeners();
   }
 

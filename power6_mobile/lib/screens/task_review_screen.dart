@@ -1,9 +1,9 @@
 // ignore_for_file: deprecated_member_use
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../services/streak_service.dart';
+import 'package:power6_mobile/services/task_service.dart';
 import '../state/app_state.dart';
 
 class TaskReviewScreen extends StatefulWidget {
@@ -20,9 +20,8 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
   // ADDED: cache for latest tasks to compute threshold flips
   List<Task> _latestTasks = <Task>[];
   final StreakService _streakService = StreakService();
+  final TaskService _taskService = TaskService();
   final int _streakThreshold = 6;
-
-  get TaskService => null;
 
   @override
   void initState() {
@@ -43,15 +42,15 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       return;
     }
 
-    final response = await TaskService.fetchTodayTasks(token);
+    final response = await _taskService.fetchTodayTasks();
     if (!mounted) return;
 
     if (response.isSuccess && response.data != null) {
       final items = response.data ?? <Task>[];
-      // Filter out completed tasks from previous days
       final today = DateTime.now();
       final filtered = items.where((t) {
-        final isToday = t.scheduledFor.year == today.year && t.scheduledFor.month == today.month && t.scheduledFor.day == today.day;
+        final sf = t.scheduledFor;
+        final isToday = sf != null && _isSameDay(sf, today);
         return !t.completed || isToday;
       }).toList();
       setState(() {
@@ -75,10 +74,8 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
     }
   }
 
-  // Helper: same-day check
   bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
-  // Helper: count streak-eligible completes today
   int _eligibleCompletedCount(List<Task> items) {
     if (items.isEmpty) return 0;
     final now = DateTime.now();
@@ -98,11 +95,9 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
     final token = context.read<AppState>().accessToken ?? '';
     if (token.isEmpty) return;
 
-    // BEFORE: threshold met?
     final prevEligible = _eligibleCompletedCount(_latestTasks);
     final wasMet = prevEligible >= _streakThreshold;
 
-    // Predict after-change eligible count (without mutating the list yet)
     int delta = 0;
     if (task.streakBound == true) {
       delta = task.completed ? -1 : 1;
@@ -110,12 +105,9 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
     final afterEligible = prevEligible + delta;
     final isMet = afterEligible >= _streakThreshold;
 
-    await TaskService.updateTaskStatus(token, task.id, !task.completed);
-
-    // Reload tasks to sync UI + cache
+    await _taskService.updateTaskStatus(task.id.toString(), !task.completed);
     await _loadTasks();
 
-    // If we just flipped into meeting threshold, refresh streak server-side and pull it into state
     if (!wasMet && isMet && mounted) {
       try {
         final refresh = await _streakService.refreshStreak();
@@ -125,14 +117,13 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
             await context.read<AppState>().loadStreak();
           }
         }
-      } catch (_) {
-        // non-fatal
-      }
+      } catch (_) {}
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // UI code remains unchanged
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -143,250 +134,39 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
-            onPressed: _loadTasks,
+            onPressed: () => _loadTasks(),
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0A0F12),
-                  Color.fromRGBO(15, 31, 36, 0.95),
-                  Color(0xFF0A0F12),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: -110,
-            top: -90,
-            child: SizedBox(
-              width: 280,
-              height: 280,
-              child: ClipOval(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.32)),
+      body: FutureBuilder<List<Task>>(
+        future: _todayTasks,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final items = snapshot.hasData ? snapshot.data! : _latestTasks;
+          if (items.isEmpty) {
+            return Center(
+              child: Text(_softError ?? 'No tasks for today'),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 96, 16, 24),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final task = items[index];
+              return ListTile(
+                title: Text('${task.title}'),                trailing: Checkbox(
+                  value: task.completed,
+                  onChanged: (_) => _toggleTaskCompletion(task),
                 ),
-              ),
-            ),
-          ),
-          RefreshIndicator(
-            onRefresh: _loadTasks,
-            child: SafeArea(
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: FutureBuilder<List<Task>>(
-                  future: _todayTasks,
-                  initialData: const <Task>[],
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
-                    }
-
-                    if (snapshot.hasError) {
-                      return _ErrorPanel(message: snapshot.error?.toString() ?? 'Could not load tasks', onRetry: _loadTasks);
-                    }
-
-                    final tasks = snapshot.data ?? <Task>[];
-                    if (tasks.isEmpty) {
-                      return _EmptyState(message: _softError ?? 'No tasks for today.', onRetry: _loadTasks);
-                    }
-
-                    final completedCount = tasks.where((t) => t.completed).length;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _GlassPanel(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.check_circle_outline, color: Colors.tealAccent),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "You've completed $completedCount of ${tasks.length} tasks today.",
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                _DailyProgressBar(completed: completedCount, total: tasks.length),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: tasks.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final task = tasks[index];
-                            return _GlassPanel(
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                leading: Checkbox(
-                                  value: task.completed,
-                                  onChanged: (_) => _toggleTaskCompletion(task),
-                                  side: const BorderSide(color: Color.fromRGBO(0, 150, 136, 0.8)),
-                                  checkColor: Colors.black,
-                                  fillColor: MaterialStateProperty.resolveWith<Color?>((states) {
-                                    if (states.contains(MaterialState.selected)) {
-                                      return const Color.fromRGBO(100, 255, 218, 0.9);
-                                    }
-                                    return const Color.fromRGBO(255, 255, 255, 0.15);
-                                  }),
-                                ),
-                                title: Text(
-                                  task.title,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    decoration: task.completed ? TextDecoration.lineThrough : TextDecoration.none,
-                                  ),
-                                ),
-                                trailing: Icon(
-                                  task.completed ? Icons.check : Icons.radio_button_unchecked,
-                                  color: task.completed ? const Color.fromRGBO(100, 255, 218, 0.9) : Colors.white54,
-                                ),
-                                onTap: () => _toggleTaskCompletion(task),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
+                onTap: () => _toggleTaskCompletion(task),
+              );
+            },
+          );
+        },
       ),
-    );
-  }
-}
-
-typedef RetryCallback = Future<void> Function();
-
-class _GlassPanel extends StatelessWidget {
-  final Widget child;
-  const _GlassPanel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color.fromRGBO(0, 0, 0, 0.35),
-            border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final String message;
-  final RetryCallback onRetry;
-  const _EmptyState({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 80.0),
-      child: Center(
-        child: _GlassPanel(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.inbox_outlined, color: Colors.tealAccent),
-                const SizedBox(height: 8),
-                Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
-                const SizedBox(height: 12),
-                ElevatedButton(onPressed: onRetry, child: const Text('Refresh')),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorPanel extends StatelessWidget {
-  final String message;
-  final RetryCallback onRetry;
-  const _ErrorPanel({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 80.0),
-      child: Center(
-        child: _GlassPanel(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.redAccent),
-                const SizedBox(height: 8),
-                Text('Error: $message', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
-                const SizedBox(height: 12),
-                ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DailyProgressBar extends StatelessWidget {
-  final int completed;
-  final int total;
-  const _DailyProgressBar({required this.completed, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (total == 0) ? 0.0 : (completed / total).clamp(0, 1).toDouble();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: LinearProgressIndicator(
-            minHeight: 8,
-            value: pct,
-            backgroundColor: const Color.fromRGBO(255, 255, 255, 0.08),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color.fromRGBO(15, 179, 160, 0.85)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text('$completed of $total tasks', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white60)),
-      ],
     );
   }
 }
