@@ -1,4 +1,3 @@
-// lib/services/task_service.dart
 import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -33,7 +32,7 @@ class TaskService {
     try {
       final headers = await _authHeaders();
       final res = await client
-          .get(_uri(ApiConstants.taskReview), headers: headers)
+          .get(_uri(ApiConstants.tasksReview), headers: headers)
           .timeout(_timeout);
 
       if (res.statusCode == 200) {

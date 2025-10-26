@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import '../config/api_constants.dart';
 
 class ApiResponse {
   final bool isSuccess;
@@ -17,14 +18,18 @@ class ApiResponse {
 }
 
 class ApiService {
-  // Prefer a --dart-define at build time; falls back to Render default.
-  static const String _defaultBase = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'https://power6-backend.onrender.com',
-  );
+  // Single source of truth for base URL: ApiConstants.baseUrl (overridable via --dart-define=API_BASE_URL=...)
+  static final String _resolvedBase = (ApiConstants.baseUrl).trim();
 
   final String baseUrl;
-  ApiService({String? baseUrl}) : baseUrl = (baseUrl ?? _defaultBase).trim();
+  ApiService({String? baseUrl})
+      : baseUrl = ((baseUrl ?? _resolvedBase).trim()) {
+    if (this.baseUrl.isEmpty) {
+      throw StateError(
+        'API base URL is missing. Provide --dart-define=API_BASE_URL or set a default in ApiConstants.',
+      );
+    }
+  }
 
   // Reasonable network timeout to prevent infinite spinners.
   static const Duration _timeout = Duration(seconds: 20);
