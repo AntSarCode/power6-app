@@ -1,9 +1,10 @@
-// ignore_for_file: deprecated_member_use
+// lib/screens/task_review_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/task.dart';
-import '../services/streak_service.dart';
-import 'package:power6_mobile/services/task_service.dart';
+import '../services/api_service.dart';
+import '../config/api_constants.dart';
 import '../state/app_state.dart';
 
 class TaskReviewScreen extends StatefulWidget {
@@ -14,159 +15,160 @@ class TaskReviewScreen extends StatefulWidget {
 }
 
 class _TaskReviewScreenState extends State<TaskReviewScreen> {
-  Future<List<Task>> _todayTasks = Future.value(<Task>[]);
-  String? _softError;
-
-  // ADDED: cache for latest tasks to compute threshold flips
-  List<Task> _latestTasks = <Task>[];
-  final StreakService _streakService = StreakService();
-  final TaskService _taskService = TaskService();
-  final int _streakThreshold = 6;
+  // Fix C: track the review session duration in UTC
+  late final DateTime _reviewSessionStartedUtc;
+  bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    _reviewSessionStartedUtc = DateTime.now().toUtc();
   }
 
-  Future<void> _loadTasks() async {
-    setState(() => _softError = null);
-    final token = context.read<AppState>().accessToken ?? '';
+  Duration get _elapsed =>
+      DateTime.now().toUtc().difference(_reviewSessionStartedUtc);
 
-    if (token.isEmpty) {
-      setState(() {
-        _todayTasks = Future.value(<Task>[]);
-        _latestTasks = <Task>[];
-        _softError = 'You are not signed in.';
-      });
+  Future<void> _submitReview(List<Task> tasks) async {
+    final token = context.read<AppState>().accessToken;
+    if (token == null || token.isEmpty) {
+      setState(() => _error = 'Not authenticated');
       return;
     }
 
-    final response = await _taskService.fetchTodayTasks();
-    if (!mounted) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
-    if (response.isSuccess && response.data != null) {
-      final items = response.data ?? <Task>[];
-      final today = DateTime.now();
-      final filtered = items.where((t) {
-        final sf = t.scheduledFor;
-        final isToday = sf != null && _isSameDay(sf, today);
-        return !t.completed || isToday;
-      }).toList();
-      setState(() {
-        _todayTasks = Future.value(filtered);
-        _latestTasks = filtered;
-      });
-    } else {
-      final err = (response.error ?? '').toLowerCase();
-      if (err.contains('no tasks') || err.contains('not found') || err.contains('404')) {
-        setState(() {
-          _todayTasks = Future.value(<Task>[]);
-          _latestTasks = <Task>[];
-        });
-      } else {
-        setState(() {
-          _softError = response.error ?? 'Failed to fetch tasks';
-          _todayTasks = Future.value(<Task>[]);
-          _latestTasks = <Task>[];
-        });
-      }
-    }
-  }
+    final api = ApiService();
+    final reviewedAtIso = DateTime.now().toUtc().toIso8601String();
 
-  bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
-
-  int _eligibleCompletedCount(List<Task> items) {
-    if (items.isEmpty) return 0;
-    final now = DateTime.now();
-    int count = 0;
-    for (final t in items) {
-      final completed = t.completed == true;
-      final eligible = (t.streakBound == true);
-      final ca = t.completedAt;
-      if (completed && eligible && ca != null && _isSameDay(ca, now)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
-  Future<void> _toggleTaskCompletion(Task task) async {
-    final token = context.read<AppState>().accessToken ?? '';
-    if (token.isEmpty) return;
-
-    final prevEligible = _eligibleCompletedCount(_latestTasks);
-    final wasMet = prevEligible >= _streakThreshold;
-
-    int delta = 0;
-    if (task.streakBound == true) {
-      delta = task.completed ? -1 : 1;
-    }
-    final afterEligible = prevEligible + delta;
-    final isMet = afterEligible >= _streakThreshold;
-
-    await _taskService.updateTaskStatus(task.id.toString(), !task.completed);
-    await _loadTasks();
-
-    if (!wasMet && isMet && mounted) {
-      try {
-        final refresh = await _streakService.refreshStreak();
-        if (refresh.isSuccess) {
-          final current = await _streakService.getCurrentStreak();
-          if (current.isSuccess && current.data != null) {
-            await context.read<AppState>().loadStreak();
-          }
+    try {
+      // Strategy: PATCH each completed task with a reviewed_at UTC timestamp
+      for (final t in tasks) {
+        if (!t.completed) continue;
+        final path = ApiConstants.taskById(t.id); // '/tasks/{id}'
+        final res = await api.patch(
+          path,
+          token: token,
+          body: {'reviewed_at': reviewedAtIso},
+        );
+        if (!res.isSuccess) {
+          throw Exception(res.error ?? 'Failed to review task ${t.id}');
         }
-      } catch (_) {}
+      }
+
+      if (!mounted) return;
+      // Refresh tasks & streak from backend; local UTC truth is already set
+      await context.read<AppState>().syncTasks();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Review saved • ${_prettyDuration(_elapsed)}')),
+      );
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // UI code remains unchanged
+    final app = context.watch<AppState>();
+    final todayKey = _yyyyMmDd(DateTime.now());
+    final todayTasks = app.tasks.where((t) => t.dayKey == todayKey).toList()
+      ..sort((a, b) => a.createdAtUtc.compareTo(b.createdAtUtc));
+    final completedToday = todayTasks.where((t) => t.completed).toList();
+
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Review Tasks'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _loadTasks(),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: Text(
+                _prettyDuration(_elapsed),
+                style: const TextStyle(
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      body: FutureBuilder<List<Task>>(
-        future: _todayTasks,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.hasData ? snapshot.data! : _latestTasks;
-          if (items.isEmpty) {
-            return Center(
-              child: Text(_softError ?? 'No tasks for today'),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 96, 16, 24),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final task = items[index];
-              return ListTile(
-                title: Text('${task.title}'),                trailing: Checkbox(
-                  value: task.completed,
-                  onChanged: (_) => _toggleTaskCompletion(task),
-                ),
-                onTap: () => _toggleTaskCompletion(task),
-              );
-            },
-          );
-        },
+      body: Column(
+        children: [
+          if (_error != null)
+            Container(
+              width: double.infinity,
+              color: Colors.red.withOpacity(0.1),
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ListTile(
+            title: Text('Completed today: ${completedToday.length}'),
+            subtitle: Text(
+              'Session: ${_prettyDuration(_elapsed)} • Streak: ${app.currentStreak}',
+            ),
+          ),
+          const Divider(height: 0),
+          Expanded(
+            child: ListView.builder(
+              itemCount: todayTasks.length,
+              itemBuilder: (context, i) {
+                final t = todayTasks[i];
+                return CheckboxListTile(
+                  value: t.completed,
+                  title: Text(t.title),
+                  subtitle: Text('Created: ${t.createdAtUtc.toLocal()}'),
+                  onChanged: (_) {
+                    final idx = app.tasks.indexWhere((x) => x.id == t.id);
+                    if (idx != -1) {
+                      // AppState toggles completed and stamps completedAtUtc in UTC
+                      app.toggleTaskCompletion(idx);
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(12),
+        child: ElevatedButton.icon(
+          onPressed: _saving ? null : () => _submitReview(completedToday),
+          icon: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: Text(
+            _saving ? 'Saving…' : 'Save Review (${completedToday.length})',
+          ),
+        ),
       ),
     );
   }
+
+  String _prettyDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    if (h > 0) return '${h}h ${m}m ${s}s';
+    if (m > 0) return '${m}m ${s}s';
+    return '${s}s';
+  }
 }
+
+// Local helper for local-day grouping
+String _yyyyMmDd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

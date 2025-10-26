@@ -44,7 +44,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       priority: _priorities.indexOf(_priority),
       streakBound: _streakBound,
       scheduledFor: DateTime.now(),
-      completedAt: null,
+      completedAt: null, createdAtUtc: DateTime.now(), dayKey: '',
     );
 
     try {

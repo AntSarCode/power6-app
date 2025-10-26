@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import './signup_screen.dart';
 import '../state/app_state.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,11 +38,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (response.isSuccess) {
-      final token = response.data!;
+      final tokenData = response.data!;
       final userResponse = await AuthService().getCurrentUser();
 
       if (userResponse.isSuccess && userResponse.data != null) {
-        context.read<AppState>().setAuthToken(token, user: userResponse.data);
+        // Safely parse userResponse.data to User model
+        final userMap = userResponse.data!['user'] as Map<String, dynamic>?;
+        final user = userMap != null ? User.fromJson(userMap) : null;
+        context.read<AppState>().setAuthToken(tokenData['access_token'] as String, user: user);
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/');
       } else {
@@ -139,7 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Logo / Hero
                             const SizedBox(height: 8),
                             const Icon(Icons.local_fire_department_rounded, size: 56, color: Colors.tealAccent),
                             const SizedBox(height: 12),
@@ -158,8 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                             ),
                             const SizedBox(height: 24),
-
-                            // Username field
                             _LabeledField(
                               label: 'Username',
                               child: TextFormField(
@@ -174,8 +175,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 14),
-
-                            // Password field
                             _LabeledField(
                               label: 'Password',
                               child: TextFormField(
@@ -196,7 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -210,7 +208,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // TODO: route to forgot password when implemented
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Forgot password coming soon')),
                                     );
@@ -219,7 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 )
                               ],
                             ),
-
                             if (_error != null) ...[
                               const SizedBox(height: 8),
                               Text(
@@ -228,7 +224,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ],
-
                             const SizedBox(height: 16),
                             SizedBox(
                               height: 48,
@@ -256,7 +251,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 12),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
