@@ -1,11 +1,7 @@
-// lib/config/api_constants.dart
+import '../env.dart';
+
 class ApiConstants {
-  // Include '/api' here if your backend routers are mounted with prefix="/api".
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    // If your backend is at /api, set: 'https://power6-backend.onrender.com/api'
-    defaultValue: 'https://power6-backend.onrender.com',
-  );
+  static const String baseUrl = Env.apiBase;
 
   // ---- Auth ----
   static String get login => '/auth/login';
