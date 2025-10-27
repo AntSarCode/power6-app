@@ -16,6 +16,7 @@ import 'package:power6_mobile/navigation/main_nav.dart';
 // Services
 import 'package:power6_mobile/services/streak_service.dart';
 
+
 /// Global messenger key so overlays/snackbars can work from anywhere.
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
