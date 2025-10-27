@@ -1,24 +1,23 @@
+// lib/config/api_constants.dart
 class ApiConstants {
-  /// Overridable at build time with --dart-define=API_BASE_URL=...
+  // Include '/api' here if your backend routers are mounted with prefix="/api".
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
+    // If your backend is at /api, set: 'https://power6-backend.onrender.com/api'
     defaultValue: 'https://power6-backend.onrender.com',
   );
 
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
+  // ---- Auth ----
+  static String get login => '/auth/login';
+  static String get register => '/auth/register';
   static String get me => '/auth/me';
 
-  static const String tasks = '/tasks';
-  static String get tasksCreate => '/tasks';
-  static String get tasksList   => '/tasks';
-  static String get tasksReview => '/tasks/review'; // if you have a separate endpoint
-  static const String taskSubmit = '/tasks/submit';
+  // ---- Tasks ----
+  static String get tasks => '/tasks';
 
-  static const String streak = '/users/streak';
-  static const String streakRefresh = '/users/streak/refresh';
+  static String get streak => '/streak';
 
-  static const String badges = '/badges';
+  static String get streakRefresh => '/streak/refresh';
 
-  static taskById(int id) {}
+  static String taskById(int id) => '/tasks/$id';
 }
