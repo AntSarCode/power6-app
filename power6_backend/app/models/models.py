@@ -13,9 +13,6 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-# NOTE: We prefer database-side timestamps (func.now()) so values are timezone-aware
-# and consistent with the DB server. Avoid datetime.utcnow() defaults here.
-
 
 class User(Base):
     __tablename__ = "users"
@@ -86,7 +83,3 @@ class Subscription(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Subscription id={self.id} tier={self.tier!r} active={self.active}>"
-
-
-# If you have badge models referenced elsewhere, ensure they remain defined in their files
-# or add them here consistently with relationships to User as needed.

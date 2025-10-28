@@ -8,11 +8,15 @@ def include_all_routes():
     from .tasks import router as tasks_router
     from .tier_logic import router as tier_logic_router
     from .users import router as users_router
+    from .streak import router as streak_router
+    # from .users import router as users_router
 
     api_router.include_router(auth_router)
     api_router.include_router(badge_router)
     api_router.include_router(tasks_router)
     api_router.include_router(tier_logic_router)
     api_router.include_router(users_router)
+    api_router.include_router(streak_router)
+    # api_router.include_router(users_router)
 
 include_all_routes()
