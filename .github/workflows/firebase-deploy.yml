@@ -26,9 +26,21 @@ jobs:
         working-directory: power6_mobile
         run: flutter pub get
 
-      - name: Build Flutter Web (release with prod API URL)
+      - name: Build Flutter Web (release with prod API URL & no PWA cache)
         working-directory: power6_mobile
-        run: flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+        run: |
+          flutter build web \
+            --release \
+            --pwa-strategy=none \
+            --dart-define=API_BASE_URL=https://power6-backend.onrender.com
+
+      - name: Inject cache-busting meta tag
+        working-directory: power6_mobile
+        run: |
+          TS=$(date +"%Y%m%d%H%M%S")
+          FILE=build/web/index.html
+          echo "Adding cache-busting meta tag: $TS"
+          sed -i '1i <meta name="app-build" content="'"$TS"'" />' "$FILE"
 
       - name: Verify build output
         working-directory: power6_mobile
@@ -38,7 +50,7 @@ jobs:
           echo "Web build contents:" && ls -la build/web || true
           du -sh build/web || true
 
-      # firebase.json is inside power6_mobile, and points 'public' to build/web
+      # firebase.json is inside power6_mobile and points 'public' to build/web
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -46,4 +58,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: .
+          entryPoint: power6_mobile
