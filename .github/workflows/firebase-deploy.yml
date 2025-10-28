@@ -6,9 +6,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./power6_mobile
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,24 +15,26 @@ jobs:
           flutter-version: '3.x'
 
       - name: Flutter Pub Get
+        working-directory: ./power6_mobile
         run: flutter pub get
 
       - name: Build Web (with API define)
-        run: flutter build web --release --dart-define=API_BASE_URL=https://power6-backend.onrender.com
-
-      - name: Move build assets to repo root expected by Firebase
+        working-directory: ./power6_mobile
         run: |
-          mkdir -p ../deploy_out
-          rsync -a build/web/ ../deploy_out/
+          flutter build web --release \
+            --dart-define=API_BASE_URL=https://power6-backend.onrender.com
 
-      - name: Install Firebase Tools
-        run: npm i -g firebase-tools
-
-      - name: Firebase Deploy
-        working-directory: .
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Stage web build to repo root /deploy_out
         run: |
-          # firebase.json must be in repo root; it should point "public" to power6_mobile/build/web or ./deploy_out
-          # If you used deploy_out above, change firebase.json "public" to "deploy_out"
-          firebase deploy --only hosting
+          rm -rf deploy_out
+          mkdir -p deploy_out
+          rsync -a power6_mobile/build/web/ deploy_out/
+
+      # 🔽 Service-account based Hosting deploy (no firebase login/CLI token)
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}  # <-- or your existing secret name
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}  # optional if .firebaserc is correct
