@@ -28,13 +28,13 @@ class TaskService {
   }
 
   Future<ApiResponse> patchReviewed(int id, String reviewedAtIsoUtc) {
-    return _api.patch(ApiConstants.taskById(id), body: {
+    return _api.patch(ApiConstants.taskById(id as String), body: {
       'reviewed_at': reviewedAtIsoUtc,
     });
   }
 
   Future<ApiResponse> toggleComplete(int id, bool completed, {String? completedAtIsoUtc}) {
-    return _api.patch(ApiConstants.taskById(id), body: {
+    return _api.patch(ApiConstants.taskById(id as String), body: {
       'completed': completed,
       if (completedAtIsoUtc != null) 'completed_at': completedAtIsoUtc,
     });

@@ -1,4 +1,3 @@
-// lib/screens/task_review_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -48,7 +47,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       // Strategy: PATCH each completed task with a reviewed_at UTC timestamp
       for (final t in tasks) {
         if (!t.completed) continue;
-        final path = ApiConstants.taskById(t.id); // '/tasks/{id}'
+        final path = ApiConstants.taskById(t.id as String); // '/tasks/{id}'
         final res = await api.patch(
           path,
           token: token,
