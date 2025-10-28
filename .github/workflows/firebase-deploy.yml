@@ -50,7 +50,29 @@ jobs:
           echo "Web build contents:" && ls -la build/web || true
           du -sh build/web || true
 
-      # firebase.json is inside power6_mobile and points 'public' to build/web
+      - name: Show repo tree (root)
+        run: ls -la
+
+      - name: Show app tree (power6_mobile)
+        working-directory: power6_mobile
+        run: ls -la
+
+      - name: Locate firebase.json and set ENTRY_POINT
+        id: locate_firebase
+        shell: bash
+        run: |
+          if [ -f power6_mobile/firebase.json ]; then
+            echo "ENTRY_POINT=power6_mobile" >> $GITHUB_ENV
+            echo "Found firebase.json in power6_mobile/"
+          elif [ -f firebase.json ]; then
+            echo "ENTRY_POINT=." >> $GITHUB_ENV
+            echo "Found firebase.json in repo root"
+          else
+            echo "firebase.json not found in repo root or power6_mobile/" >&2
+            exit 1
+          fi
+
+      # Deploy using the detected entry point
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -58,4 +80,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: power6_mobile
+          entryPoint: ${{ env.ENTRY_POINT }}
