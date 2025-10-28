@@ -8,24 +8,17 @@ from sqlalchemy.exc import SQLAlchemyError
 # --- DB metadata creation ---
 try:
     from app.database import Base, engine  # type: ignore
-except ImportError:
+except ImportError:  # pragma: no cover
     Base = None
     engine = None
 
-# --- Core routers ---
+# --- Core routers (aggregate) ---
 from app.routes import api_router
-from app.routes.stripe import router as stripe_router
-
 
 try:
-    from app.routes.users import router as users_router
+    from app.routes.stripe import router as stripe_router
 except Exception:  # pragma: no cover
-    users_router = None  # type: ignore
-
-try:
-    from app.routes.tasks import router as tasks_router
-except Exception:  # pragma: no cover
-    tasks_router = None  # type: ignore
+    stripe_router = None  # type: ignore
 
 
 def build_app() -> FastAPI:
@@ -54,24 +47,28 @@ def build_app() -> FastAPI:
     )
 
     # --- Mount routes ---
-    # Aggregate router (existing)
     application.include_router(api_router, prefix="")
+    application.include_router(api_router, prefix="/api")
 
-    if users_router is not None:
-        application.include_router(users_router, prefix="")
-    if tasks_router is not None:
-        application.include_router(tasks_router, prefix="")
+    # --- Mount Stripe ---
+    if stripe_router is not None:
+        application.include_router(stripe_router, prefix="/stripe")
+        application.include_router(stripe_router, prefix="/api/stripe")
 
-    application.include_router(stripe_router, prefix="/stripe")
-
+    # --- DB metadata ---
     if Base is not None and engine is not None:
         try:
             Base.metadata.create_all(bind=engine)  # type: ignore[attr-defined]
         except SQLAlchemyError:
             pass
 
+    # --- Health checks at both roots ---
     @application.get("/health")
     def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @application.get("/api/health")
+    def api_health() -> dict[str, str]:
         return {"status": "ok"}
 
     return application
