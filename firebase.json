@@ -1,10 +1,7 @@
 {
   "hosting": {
-    "public": "build/web",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "public": "power6_mobile/build/web",
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "predeploy": [
-      "flutter build web --dart-define=API_BASE_URL=https://power6-backend.onrender.com"
-    ]
+    "ignore": ["firebase.json","**/.*","**/node_modules/**"]
   }
 }
