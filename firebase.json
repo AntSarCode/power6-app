@@ -1,7 +1,21 @@
 {
   "hosting": {
     "public": "power6_mobile/build/web",
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "ignore": ["firebase.json","**/.*","**/node_modules/**"]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "cleanUrls": true,
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      }
+    ]
   }
 }

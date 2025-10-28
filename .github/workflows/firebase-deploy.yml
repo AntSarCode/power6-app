@@ -1,83 +1,40 @@
 name: Deploy Flutter Web to Firebase Hosting
-
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: ./power6_mobile
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install base packages
-        run: sudo apt-get update && sudo apt-get install -y git curl unzip xz-utils zip libglu1-mesa
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
-          cache: true
+          flutter-version: '3.x'
 
-      - name: Flutter pub get
-        working-directory: power6_mobile
+      - name: Flutter Pub Get
         run: flutter pub get
 
-      - name: Build Flutter Web (release with prod API URL & no PWA cache)
-        working-directory: power6_mobile
+      - name: Build Web (with API define)
+        run: flutter build web --release --dart-define=API_BASE_URL=https://power6-backend.onrender.com
+
+      - name: Move build assets to repo root expected by Firebase
         run: |
-          flutter build web \
-            --release \
-            --pwa-strategy=none \
-            --dart-define=API_BASE_URL=https://power6-backend.onrender.com
+          mkdir -p ../deploy_out
+          rsync -a build/web/ ../deploy_out/
 
-      - name: Inject cache-busting meta tag
-        working-directory: power6_mobile
+      - name: Install Firebase Tools
+        run: npm i -g firebase-tools
+
+      - name: Firebase Deploy
+        working-directory: .
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          TS=$(date +"%Y%m%d%H%M%S")
-          FILE=build/web/index.html
-          echo "Adding cache-busting meta tag: $TS"
-          sed -i '1i <meta name="app-build" content="'"$TS"'" />' "$FILE"
-
-      - name: Verify build output
-        working-directory: power6_mobile
-        run: |
-          flutter --version
-          echo "Project contents (power6_mobile):" && ls -la
-          echo "Web build contents:" && ls -la build/web || true
-          du -sh build/web || true
-
-      - name: Show repo tree (root)
-        run: ls -la
-
-      - name: Show app tree (power6_mobile)
-        working-directory: power6_mobile
-        run: ls -la
-
-      - name: Locate firebase.json and set ENTRY_POINT
-        id: locate_firebase
-        shell: bash
-        run: |
-          if [ -f power6_mobile/firebase.json ]; then
-            echo "ENTRY_POINT=power6_mobile" >> $GITHUB_ENV
-            echo "Found firebase.json in power6_mobile/"
-          elif [ -f firebase.json ]; then
-            echo "ENTRY_POINT=." >> $GITHUB_ENV
-            echo "Found firebase.json in repo root"
-          else
-            echo "firebase.json not found in repo root or power6_mobile/" >&2
-            exit 1
-          fi
-
-      # Deploy using the detected entry point
-      - name: Deploy to Firebase Hosting (live)
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live
-          entryPoint: ${{ env.ENTRY_POINT }}
+          # firebase.json must be in repo root; it should point "public" to power6_mobile/build/web or ./deploy_out
+          # If you used deploy_out above, change firebase.json "public" to "deploy_out"
+          firebase deploy --only hosting
