@@ -19,7 +19,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.24.x'
           cache: true
 
       - name: Flutter pub get
@@ -28,18 +28,17 @@ jobs:
 
       - name: Build Flutter Web (release with prod API URL)
         working-directory: power6_mobile
-        run: flutter build web --release --dart-define=BASE_URL=${{ secrets.API_BASE_URL }}
+        run: flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Verify build output
         working-directory: power6_mobile
         run: |
           flutter --version
-          echo "Project contents:" && ls -la
+          echo "Project contents (power6_mobile):" && ls -la
           echo "Web build contents:" && ls -la build/web || true
           du -sh build/web || true
 
-      # Deploy from REPO ROOT because firebase.json is at the root.
-      # firebase.json points 'public' to power6_mobile/build/web
+      # firebase.json is inside power6_mobile, and points 'public' to build/web
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -47,4 +46,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          entryPoint: .
+          entryPoint: power6_mobile
