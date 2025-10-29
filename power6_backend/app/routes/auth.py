@@ -6,12 +6,12 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import os
+from pydantic import BaseModel
 
 from app.models.models import User
 from app.schemas import (
     UserCreate,
     UserRead,
-    Token,
     LoginRequest,
 )
 from app.database import get_db
@@ -30,17 +30,29 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# Inline response models to match frontend expectations
+class TokenPair(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class RefreshRequest(BaseModel):
+    refresh_token: Optional[str] = None
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+
 
 def get_user_by_identifier(db: Session, identifier: str) -> Optional[User]:
     ident = identifier.strip().lower()
@@ -55,13 +67,15 @@ def get_user_by_identifier(db: Session, identifier: str) -> Optional[User]:
         .first()
     )
 
+
 def authenticate_user(db: Session, identifier: str, password: str) -> Optional[User]:
     user = get_user_by_identifier(db, identifier)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+
+@router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     username_norm = user_data.username.strip()
     email_norm = user_data.email.strip().lower()
@@ -87,7 +101,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     refresh_token_value = create_refresh_token(data={"sub": new_user.username})
     return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer"}
 
-@router.post("/login", response_model=Token)
+
+@router.post("/login", response_model=TokenPair)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     identifier = login_data.username_or_email.strip().lower()
     user = authenticate_user(db, identifier, login_data.password)
@@ -102,13 +117,22 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     refresh_token_value = create_refresh_token(data={"sub": user.username})
     return {"access_token": access_token, "refresh_token": refresh_token_value, "token_type": "bearer"}
 
-@router.post("/refresh", response_model=Token)
-def refresh_token(request: Request, db: Session = Depends(get_db)):
-    token = request.headers.get("Authorization")
+
+@router.post("/refresh", response_model=TokenPair)
+def refresh_token(payload: RefreshRequest | None = None, request: Request | None = None, db: Session = Depends(get_db)):
+    # Prefer body param if provided; otherwise fall back to Authorization header
+    body_token = (payload.refresh_token if payload else None)
+    header_token = None
+    if request is not None:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            header_token = auth_header.replace("Bearer ", "", 1)
+
+    token = body_token or header_token
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
+
     try:
-        token = token.replace("Bearer ", "")
         payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         if not username:
@@ -123,8 +147,9 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
     return {
         "access_token": new_access_token,
         "refresh_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
     }
+
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     try:
@@ -139,6 +164,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
+
 @router.get("/me", response_model=UserRead)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/logout")
+def logout():
+    # Stateless JWT: nothing to do server-side; client should discard tokens
+    return {"ok": True}

@@ -1,9 +1,30 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, AliasChoices, field_validator
+
+# ---------------------------------
+# Helper: UTC + Priority Normalizer
+# ---------------------------------
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+_PRIORITY_LABEL_TO_INT = {"low": 0, "normal": 1, "high": 2}
+
+
+def _priority_to_int(v: Union[str, int, None], default: int = 1) -> int:
+    if v is None:
+        return default
+    if isinstance(v, int):
+        return v if v in (0, 1, 2) else default
+    if isinstance(v, str):
+        key = v.strip().lower()
+        return _PRIORITY_LABEL_TO_INT.get(key, default)
+    return default
+
 
 # -----------------------------
 # User Schemas (Pydantic v2)
@@ -13,6 +34,7 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
+
 
 class UserRead(BaseModel):
     id: int
@@ -25,45 +47,44 @@ class UserRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 class UserTierUpdate(BaseModel):
     tier: str
 
+
 class LoginRequest(BaseModel):
-    username_or_email: str = Field(validation_alias=AliasChoices("username_or_email", "username", "email"))
+    username_or_email: str = Field(
+        validation_alias=AliasChoices("username_or_email", "username", "email")
+    )
     password: str
+
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-# -----------------------------
-# Task Schemas
-# -----------------------------
 
 class TaskBase(BaseModel):
     title: str
     notes: Optional[str] = None
-    # Accept string ("Low"|"Normal"|"High") or int (0,1,2) from older clients
-    priority: Union[str, int] = "Normal"
+    # Accept str or int inbound, but store as int (0/1/2). Default Normal=1
+    priority: int = 1
     scheduled_for: Optional[datetime] = None
-    streak_bound: bool = False
+    streak_bound: bool = True
 
     @field_validator("priority", mode="before")
     @classmethod
-    def normalize_priority(cls, v):
-        mapping = {0: "Low", 1: "Normal", 2: "High"}
-        if isinstance(v, int):
-            return mapping.get(v, "Normal")
-        if isinstance(v, str):
-            s = v.strip().capitalize()
-            if s in ("Low", "Normal", "High"):
-                return s
-        raise ValueError("Invalid priority; expected 'Low'|'Normal'|'High' or 0|1|2")
+    def _coerce_priority(cls, v):
+        return _priority_to_int(v, default=1)
+
 
 class TaskCreate(TaskBase):
-    # Ensure backend has the field it expects and default to False
     completed: bool = False
+    # These are client-optional; server may set created_at itself
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    reviewed_at: Optional[datetime] = None
+
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -71,27 +92,27 @@ class TaskUpdate(BaseModel):
     priority: Optional[Union[str, int]] = None
     scheduled_for: Optional[datetime] = None
     completed: Optional[bool] = None
+    created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    reviewed_at: Optional[datetime] = None
     streak_bound: Optional[bool] = None
 
     @field_validator("priority", mode="before")
     @classmethod
-    def normalize_priority(cls, v):
+    def _coerce_priority(cls, v):
         if v is None:
             return v
-        mapping = {0: "Low", 1: "Normal", 2: "High"}
-        if isinstance(v, int):
-            return mapping.get(v, "Normal")
-        if isinstance(v, str):
-            s = v.strip().capitalize()
-            if s in ("Low", "Normal", "High"):
-                return s
-        raise ValueError("Invalid priority; expected 'Low'|'Normal'|'High' or 0|1|2")
+        return _priority_to_int(v, default=1)
+
 
 class TaskRead(TaskBase):
     id: int
     user_id: int
     completed: bool = False
+    created_at: datetime
     completed_at: Optional[datetime] = None
+    reviewed_at: Optional[datetime] = None
+    # Computed server-side; useful for daily grouping in UI
+    day_key: Optional[str] = None
 
     model_config = {"from_attributes": True}
