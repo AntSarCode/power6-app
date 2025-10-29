@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Body
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -119,9 +119,15 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenPair)
-def refresh_token(payload: RefreshRequest | None = None, request: Request | None = None, db: Session = Depends(get_db)):
-    # Prefer body param if provided; otherwise fall back to Authorization header
-    body_token = (payload.refresh_token if payload else None)
+def refresh_token(
+    payload: RefreshRequest = Body(default=None),
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """Accept refresh token in body or Authorization header. Avoid Optional/Union annotations
+    for FastAPI param analysis compatibility under Pydantic v2.
+    """
+    body_token = payload.refresh_token if payload else None
     header_token = None
     if request is not None:
         auth_header = request.headers.get("Authorization")
@@ -133,8 +139,8 @@ def refresh_token(payload: RefreshRequest | None = None, request: Request | None
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
 
     try:
-        payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
+        payload_jwt = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload_jwt.get("sub")
         if not username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
     except JWTError:

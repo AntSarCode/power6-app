@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.models import Task
 
 # ----------------------------
-# Config
+# Config++
 # ----------------------------
 DEFAULT_STREAK_THRESHOLD: int = 6
 
