@@ -47,18 +47,21 @@ class Task(Base):
         Index("ix_tasks_user_streak", "user_id", "streak_bound", "completed"),
         Index("ix_tasks_user_completed_at", "user_id", "completed_at"),
         Index("ix_tasks_scheduled_for", "scheduled_for"),
+        # Functional day index used by streak & daily grouping (UTC date of completed_at)
+        Index("ix_tasks_user_day", "user_id", func.date(text("completed_at"))),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    notes = Column(String)
+    notes = Column(String, nullable=True)
     priority = Column(Integer, nullable=False, server_default="1")
 
     # Scheduling and completion fields
-    scheduled_for = Column(DateTime(timezone=True))
+    scheduled_for = Column(DateTime(timezone=True), nullable=True)
     completed = Column(Boolean, nullable=False, server_default=text("false"))
-    streak_bound = Column(Boolean, nullable=False, server_default=text("false"))
+    streak_bound = Column(Boolean, nullable=False, server_default=text("true"))
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
