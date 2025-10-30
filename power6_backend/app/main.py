@@ -90,6 +90,7 @@ def _bootstrap_migrations(db_engine) -> None:
             ensure("scheduled_for", "timestamptz NULL")
             ensure("streak_bound",  "boolean NOT NULL DEFAULT true")
             ensure("completed_at",  "timestamptz NULL")
+            ensure("updated_at",    "timestamptz NULL")
 
     except SQLAlchemyError as e:  # pragma: no cover
         print("⚠️  Skipped bootstrap migration:", e)
