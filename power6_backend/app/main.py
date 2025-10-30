@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import inspect
 
 # --- DB imports (safe on local/test) ---
 try:
@@ -20,12 +21,9 @@ try:
 except Exception:  # pragma: no cover
     stripe_router = None  # type: ignore
 
-
 # ---------------------------------------------------------------------------
-# Minimal bootstrap migration so fresh DBs don't miss critical columns
+# Fresh DB: minimal bootstrap migration
 # ---------------------------------------------------------------------------
-
-from sqlalchemy import inspect
 
 def _bootstrap_migrations(db_engine) -> None:
     """Ensure critical columns exist in production DB.
@@ -93,26 +91,44 @@ def build_app() -> FastAPI:
     application = FastAPI(title="Power6 API")
 
     # --- CORS ---
-    origins = [
-        "https://power6.app",
-        "https://www.power6.app",
-        "https://power6-app.web.app",
-        "https://power6-app.firebaseapp.com",
-    ]
+    # Allow a strict list in prod, but enable a one-switch wildcard for debugging
+    allow_all = os.getenv("CORS_ALLOW_ALL", "0") == "1"
 
-    extra = os.getenv("ALLOWED_ORIGINS", "")
-    if extra.strip():
-        origins.extend([o.strip() for o in extra.split(",") if o.strip()])
+    if allow_all:
+        cors_kwargs = dict(
+            allow_origins=["*"],  # wildcard allowed only when not sending credentials
+            allow_credentials=False,
+            allow_methods=["*"],
+            # Some browsers don't accept '*' for request headers; include explicit list
+            allow_headers=["*", "Authorization", "authorization", "Content-Type", "Accept", "X-Requested-With"],
+            expose_headers=["*", "Authorization"],
+            max_age=86400,
+        )
+    else:
+        origins = [
+            "https://power6.app",
+            "https://www.power6.app",
+            "https://power6-app.web.app",
+            "https://power6-app.firebaseapp.com",
+        ]
+        # Optional: support subdomains via regex
+        origin_regex = r"https://([a-zA-Z0-9-]+\.)*power6\.app"
 
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-        max_age=86400,
-    )
+        extra = os.getenv("ALLOWED_ORIGINS", "")
+        if extra.strip():
+            origins.extend([o.strip() for o in extra.split(",") if o.strip()])
+
+        cors_kwargs = dict(
+            allow_origins=origins,
+            allow_origin_regex=origin_regex,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*", "Authorization", "authorization", "Content-Type", "Accept", "X-Requested-With"],
+            expose_headers=["*", "Authorization"],
+            max_age=86400,
+        )
+
+    application.add_middleware(CORSMiddleware, **cors_kwargs)
 
     # --- Routes ---
     application.include_router(api_router, prefix="")
