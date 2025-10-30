@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import inspect
 
 # --- DB imports (safe on local/test) ---
 try:
@@ -21,9 +20,12 @@ try:
 except Exception:  # pragma: no cover
     stripe_router = None  # type: ignore
 
+
 # ---------------------------------------------------------------------------
-# Fresh DB: minimal bootstrap migration
+# Minimal bootstrap migration so fresh DBs don't miss critical columns
 # ---------------------------------------------------------------------------
+
+from sqlalchemy import inspect
 
 def _bootstrap_migrations(db_engine) -> None:
     """Ensure critical columns exist in production DB.
@@ -72,12 +74,22 @@ def _bootstrap_migrations(db_engine) -> None:
             except Exception:
                 pass
 
-            # Ensure reviewed_at exists
-            if "reviewed_at" not in existing_cols:
-                ident = f'{schema+"." if schema else ""}{target_table}'
-                conn.execute(text(
-                    f"ALTER TABLE {ident} ADD COLUMN IF NOT EXISTS reviewed_at timestamptz NULL"
-                ))
+                        # Ensure core columns exist
+            ident = f'{schema+"." if schema else ""}{target_table}'
+
+            def ensure(col: str, ddl: str):
+                try:
+                    if col not in existing_cols:
+                        conn.execute(text(f"ALTER TABLE {ident} ADD COLUMN IF NOT EXISTS {col} {ddl}"))
+                        existing_cols.add(col)
+                except Exception as _e:
+                    # continue boot even if one statement fails
+                    print(f"bootstrap: skip {col}:", _e)
+
+            ensure("reviewed_at",  "timestamptz NULL")
+            ensure("scheduled_for", "timestamptz NULL")
+            ensure("streak_bound",  "boolean NOT NULL DEFAULT true")
+            ensure("completed_at",  "timestamptz NULL")
 
     except SQLAlchemyError as e:  # pragma: no cover
         print("⚠️  Skipped bootstrap migration:", e)
@@ -123,6 +135,7 @@ def build_app() -> FastAPI:
             allow_origin_regex=origin_regex,
             allow_credentials=True,
             allow_methods=["*"],
+            # Explicitly include Authorization to satisfy strict browsers
             allow_headers=["*", "Authorization", "authorization", "Content-Type", "Accept", "X-Requested-With"],
             expose_headers=["*", "Authorization"],
             max_age=86400,
