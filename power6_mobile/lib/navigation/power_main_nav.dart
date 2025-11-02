@@ -2,8 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../screens/home_screen.dart';
-import '../screens/task_input_screen.dart';
-import '../screens/task_review_screen.dart';
+import '../screens/task_input_screen.dart' as input;
+import '../screens/task_review_screen.dart' as review;
 import '../screens/timeline_screen.dart';
 import '../screens/streak_screen.dart';
 import '../screens/subscription_screen.dart';
@@ -21,15 +21,21 @@ class _PowerMainNavState extends State<PowerMainNav> {
   int _index = 0;
 
   // Order must match bottom destinations.
-  final _screens = const [
-    HomeScreen(),
-    TaskInputScreen(),
-    TaskReviewScreen(),
-    TimelineScreen(),
-    StreakScreen(),
-    SubscriptionScreen(),
-    PowerBadgeScreen(), // <-- NEW: Badges tab
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(),
+      input.TaskInputScreen(),
+      review.TaskReviewScreen(),
+      TimelineScreen(),
+      StreakScreen(),
+      SubscriptionScreen(),
+      PowerBadgeScreen(), // Badges tab
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +71,8 @@ class _PowerMainNavState extends State<PowerMainNav> {
               child: ClipOval(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.22)),
+                  child: Container(
+                      color: const Color.fromRGBO(15, 179, 160, 0.22)),
                 ),
               ),
             ),
@@ -77,13 +84,28 @@ class _PowerMainNavState extends State<PowerMainNav> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.add_box_outlined), selectedIcon: Icon(Icons.add_box), label: 'Input'),
-          NavigationDestination(icon: Icon(Icons.checklist_outlined), selectedIcon: Icon(Icons.checklist), label: 'Review'),
-          NavigationDestination(icon: Icon(Icons.timeline_outlined), selectedIcon: Icon(Icons.timeline), label: 'Timeline'),
-          NavigationDestination(icon: Icon(Icons.local_fire_department_outlined), selectedIcon: Icon(Icons.local_fire_department), label: 'Streak'),
-          NavigationDestination(icon: Icon(Icons.workspace_premium_outlined), selectedIcon: Icon(Icons.workspace_premium), label: 'Subscribe'),
-          NavigationDestination(icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: 'Badges'), // <-- NEW
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.add_box_outlined),
+              selectedIcon: Icon(Icons.add_box),
+              label: 'Input'),
+          NavigationDestination(icon: Icon(Icons.checklist_outlined),
+              selectedIcon: Icon(Icons.checklist),
+              label: 'Review'),
+          NavigationDestination(icon: Icon(Icons.timeline_outlined),
+              selectedIcon: Icon(Icons.timeline),
+              label: 'Timeline'),
+          NavigationDestination(
+              icon: Icon(Icons.local_fire_department_outlined),
+              selectedIcon: Icon(Icons.local_fire_department),
+              label: 'Streak'),
+          NavigationDestination(icon: Icon(Icons.workspace_premium_outlined),
+              selectedIcon: Icon(Icons.workspace_premium),
+              label: 'Subscribe'),
+          NavigationDestination(icon: Icon(Icons.emoji_events_outlined),
+              selectedIcon: Icon(Icons.emoji_events),
+              label: 'Badges'),
         ],
       ),
     );

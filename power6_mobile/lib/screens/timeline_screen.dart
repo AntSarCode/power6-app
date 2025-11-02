@@ -21,6 +21,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   late Future<List<Task>> _taskHistory;
   String? _softError;
+  final ApiService _api = ApiService(ApiConstants.baseUrl, null);
 
   @override
   void initState() {
@@ -42,8 +43,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     }
 
     try {
-      final api = ApiService(ApiConstants.baseUrl, null);
-      final res = await api.getTaskHistory(token: token);
+      final res = await _api.getTaskHistory(token: token);
 
       if (!mounted) return;
 
@@ -56,9 +56,9 @@ class _TimelineScreenState extends State<TimelineScreen> {
             .map((j) => Task.fromJson(j))
             .toList()
           ..sort((a, b) {
-            final aT = a.createdAtUtc;
-            final bT = b.createdAtUtc;
-            return bT.compareTo(aT); // newest first
+            final at = a.completedAtUtc ?? a.createdAtUtc;
+            final bt = b.completedAtUtc ?? b.createdAtUtc;
+            return bt.compareTo(at); // newest completed first
           });
 
         setState(() => _taskHistory = Future.value(tasks));
@@ -97,7 +97,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
         ),
         body: Stack(
           children: [
-            // Unified dark gradient background (same as other screens)
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -111,8 +110,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 ),
               ),
             ),
-
-            // Decorative teal glow
             Positioned(
               top: -120,
               right: -80,
@@ -127,7 +124,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 ),
               ),
             ),
-
             LayoutBuilder(
               builder: (context, constraints) => RefreshIndicator(
                 onRefresh: _loadTaskHistory,
@@ -228,8 +224,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
     final created = t.createdAtUtc.toLocal();
     final completed = t.completedAtUtc?.toLocal();
     if (completed != null) {
-      final diff = completed.difference(created);
-      return Text('Completed in ' + _pretty(diff));
+      final ago = DateTime.now().toUtc().difference(t.completedAtUtc!.toUtc());
+      return Text('Completed ${_pretty(ago)} ago');
     } else {
       final diff = DateTime.now().difference(created);
       return Text('Open for ' + _pretty(diff));
@@ -246,14 +242,12 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   Map<String, List<Task>> _groupTasksByDate(List<Task> tasks) {
-    // Use local day from createdAtUtc -> scheduledFor -> now, fallback to task.dayKey if present
-    final byDay = SplayTreeMap<String, List<Task>>((a, b) => b.compareTo(a)); // newest day first
-
-    String _yyyyMmDd(DateTime d) => _formatYmd(d);
+    final byDay = SplayTreeMap<String, List<Task>>((a, b) => b.compareTo(a));
+    String _ymd(DateTime d) => _formatYmd(d);
 
     for (final t in tasks) {
-      final localDt = t.createdAtUtc.toLocal();
-      final key = t.dayKey ?? _yyyyMmDd(localDt);
+      final when = (t.completedAtUtc ?? t.createdAtUtc).toUtc();
+      final key = _ymd(when);
       byDay.putIfAbsent(key, () => <Task>[]).add(t);
     }
     return byDay;

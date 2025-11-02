@@ -180,7 +180,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleTaskCompletion(int index) async {
+  Future<void> toggleTaskCompletion(int index, {required bool force}) async {
     final token = _authToken;
     if (token == null) return;
     if (index < 0 || index >= _tasks.length) return;
