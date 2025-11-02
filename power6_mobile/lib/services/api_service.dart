@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
-/// Lightweight, generic API response wrapper.
+
 class ApiResponse {
   final bool isSuccess;
   final Map<String, dynamic>? data;
@@ -18,7 +18,7 @@ class ApiResponse {
 
 class ApiService {
   final String baseUrl;
-  final http.Client _client; // re-usable client for perf
+  final http.Client _client;
 
   ApiService(String baseUrl, dynamic client)
       : baseUrl = ((baseUrl).trim()),
@@ -157,27 +157,27 @@ class ApiService {
   }
 
   Future<ApiResponse> getTaskHistory({
-  required String token,
-  DateTime? from,
-  DateTime? to,
-}) async {
-  // backend expects YYYY-MM-DD in 'from_date' / 'to_date'
-  String _ymd(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    required String token,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    // backend expects YYYY-MM-DD in 'from_date' / 'to_date'
+    String _ymd(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  final now = DateTime.now();
-  final DateTime fromDate = from ?? now.subtract(const Duration(days: 30));
-  final DateTime toDate = to ?? now;
+    final nowUtc = DateTime.now().toUtc();
+    final DateTime fromDate = (from ?? nowUtc.subtract(const Duration(days: 30))).toUtc();
+    final DateTime toDate = (to ?? nowUtc).toUtc();
 
-  return get(
-    "/tasks/history",
-    token: token,
-    query: {
-      "from_date": _ymd(fromDate),
-      "to_date": _ymd(toDate),
-    },
-  );
-}
+    return get(
+      "/tasks/history",
+      token: token,
+      query: {
+        "from_date": _ymd(fromDate),
+        "to_date": _ymd(toDate),
+      },
+    );
+  }
 
   ApiResponse _toResponse(http.Response res) {
     final ok = res.statusCode >= 200 && res.statusCode < 300;
@@ -202,7 +202,6 @@ class ApiService {
       return ApiResponse.success(<String, dynamic>{});
     }
 
-    // Provide clearer auth errors to the UI.
     if (res.statusCode == 401 || res.statusCode == 403) {
       return ApiResponse.failure('Unauthorized');
     }
@@ -215,6 +214,6 @@ class ApiService {
   }
 
   void dispose() {
-    _client.close(); // free sockets
+    _client.close();
   }
 }

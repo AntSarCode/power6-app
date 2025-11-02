@@ -188,7 +188,7 @@ class HomeScreen extends StatelessWidget {
                               title: task.title,
                               description: task.notes,
                               isCompleted: task.completed,
-                              onTap: () => appState.toggleTaskCompletion(index),
+                              onTap: () => appState.toggleTaskCompletion(index, force: false),
                             ),
                           ),
                         );

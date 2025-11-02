@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../screens/home_screen.dart';
-import '../screens/task_input_screen.dart';
-import '../screens/task_review_screen.dart';
+import '../screens/task_input_screen.dart' as input;
+import '../screens/task_review_screen.dart' as review;
 import '../screens/timeline_screen.dart';
 import '../screens/streak_screen.dart';
 import '../screens/subscription_screen.dart';
@@ -22,18 +22,26 @@ class MainNav extends StatefulWidget {
 class _MainNavState extends State<MainNav> {
   int _index = 0;
 
-  late final List<Widget> _screens = const [
-    HomeScreen(),
-    TaskInputScreen(),
-    TaskReviewScreen(),
-    TimelineScreen(),
-    StreakScreen(),
-    SubscriptionScreen(),
-    PowerBadgeScreen(),
-  ];
+  // Keep screens alive between tab switches
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(),
+      input.TaskInputScreen(),
+      review.TaskReviewScreen(),
+      TimelineScreen(),
+      StreakScreen(),
+      SubscriptionScreen(),
+      PowerBadgeScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    // react to auth/tier changes if needed
     context.watch<AppState>();
 
     return Scaffold(
