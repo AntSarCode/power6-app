@@ -1,11 +1,13 @@
+import 'dart:collection';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
-import '../widgets/task_card.dart';
 import '../utils/access.dart';
 import '../widgets/tier_guard.dart';
 import '../state/app_state.dart';
+import '../services/api_service.dart';
+import '../config/api_constants.dart';
 
 class TimelineScreen extends StatefulWidget {
   const TimelineScreen({super.key});
@@ -15,10 +17,10 @@ class TimelineScreen extends StatefulWidget {
 }
 
 class _TimelineScreenState extends State<TimelineScreen> {
+  String _formatYmd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   late Future<List<Task>> _taskHistory;
   String? _softError;
-
-  get TaskService => null;
 
   @override
   void initState() {
@@ -30,8 +32,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
   Future<void> _loadTaskHistory() async {
     setState(() => _softError = null);
 
-    final token = context.read<AppState>().accessToken ?? '';
-    if (token.isEmpty) {
+    final token = context.read<AppState>().accessToken;
+    if (token == null || token.isEmpty) {
       setState(() {
         _taskHistory = Future.value(<Task>[]);
         _softError = 'You are not signed in.';
@@ -39,17 +41,38 @@ class _TimelineScreenState extends State<TimelineScreen> {
       return;
     }
 
-    // TODO: Swap to real history endpoint when available
-    final response = await TaskService.fetchTodayTasks(token);
+    try {
+      final api = ApiService(ApiConstants.baseUrl, null);
+      final res = await api.getTaskHistory(token: token);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (response.isSuccess && response.data != null) {
-      setState(() => _taskHistory = Future.value(response.data));
-    } else {
+      if (res.isSuccess && res.data != null) {
+        final map = res.data!;
+        final dynamic listDyn = (map['items'] ?? map['data'] ?? map['results']);
+
+        final List<Task> tasks = (listDyn as List<dynamic>? ?? const <dynamic>[])
+            .cast<Map<String, dynamic>>()
+            .map((j) => Task.fromJson(j))
+            .toList()
+          ..sort((a, b) {
+            final aT = a.createdAtUtc;
+            final bT = b.createdAtUtc;
+            return bT.compareTo(aT); // newest first
+          });
+
+        setState(() => _taskHistory = Future.value(tasks));
+      } else {
+        setState(() {
+          _taskHistory = Future.value(<Task>[]);
+          _softError = res.error ?? 'Unable to fetch tasks';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _taskHistory = Future.value(<Task>[]);
-        _softError = response.error ?? 'Unable to fetch tasks';
+        _softError = 'Error: $e';
       });
     }
   }
@@ -173,11 +196,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
                                         children: entry.value
                                             .map((task) => Padding(
                                                   padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                                  child: TaskCard(
-                                                    title: task.title,
-                                                    description: task.notes,
-                                                    isCompleted: task.completed,
-                                                    onTap: () {},
+                                                  child: ListTile(
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                                    leading: Icon(task.completed ? Icons.check_circle : Icons.circle_outlined),
+                                                    title: Text(task.title),
+                                                    subtitle: _buildSubtitle(task),
                                                   ),
                                                 ))
                                             .toList(),
@@ -198,54 +221,42 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ],
         ),
       ),
-      fallback: Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          title: const Text('Task Timeline'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0A0F12),
-                    Color.fromRGBO(15, 31, 36, 0.95),
-                    Color(0xFF0A0F12),
-                  ],
-                ),
-              ),
-            ),
-            Center(
-              child: _GlassPanel(
-                child: const Padding(
-                  padding: EdgeInsets.all(24.0),
-                  child: Text(
-                    'This feature is available to Pro users only.',
-                    style: TextStyle(fontSize: 18),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Map<String, List<Task>> _groupTasksByDate(List<Task> tasks) {
-    final Map<String, List<Task>> grouped = {};
-    for (var task in tasks) {
-      final date = task.scheduledFor;
-      final dateKey = DateTime(date!.year, date.month, date.day).toIso8601String().split('T').first;
-      grouped.putIfAbsent(dateKey, () => <Task>[]).add(task);
+  Widget _buildSubtitle(Task t) {
+    final created = t.createdAtUtc.toLocal();
+    final completed = t.completedAtUtc?.toLocal();
+    if (completed != null) {
+      final diff = completed.difference(created);
+      return Text('Completed in ' + _pretty(diff));
+    } else {
+      final diff = DateTime.now().difference(created);
+      return Text('Open for ' + _pretty(diff));
     }
-    return grouped;
+  }
+
+  String _pretty(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    if (h > 0) return '${h}h ${m}m ${s}s';
+    if (m > 0) return '${m}m ${s}s';
+    return '${s}s';
+  }
+
+  Map<String, List<Task>> _groupTasksByDate(List<Task> tasks) {
+    // Use local day from createdAtUtc -> scheduledFor -> now, fallback to task.dayKey if present
+    final byDay = SplayTreeMap<String, List<Task>>((a, b) => b.compareTo(a)); // newest day first
+
+    String _yyyyMmDd(DateTime d) => _formatYmd(d);
+
+    for (final t in tasks) {
+      final localDt = t.createdAtUtc.toLocal();
+      final key = t.dayKey ?? _yyyyMmDd(localDt);
+      byDay.putIfAbsent(key, () => <Task>[]).add(t);
+    }
+    return byDay;
   }
 }
 

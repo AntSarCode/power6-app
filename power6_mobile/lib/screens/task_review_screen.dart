@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,7 +15,7 @@ class TaskReviewScreen extends StatefulWidget {
 }
 
 class _TaskReviewScreenState extends State<TaskReviewScreen> {
-  // Fix C: track the review session duration in UTC
+  // Track the review session duration in UTC
   late final DateTime _reviewSessionStartedUtc;
   bool _saving = false;
   String? _error;
@@ -25,8 +26,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
     _reviewSessionStartedUtc = DateTime.now().toUtc();
   }
 
-  Duration get _elapsed =>
-      DateTime.now().toUtc().difference(_reviewSessionStartedUtc);
+  Duration get _elapsed => DateTime.now().toUtc().difference(_reviewSessionStartedUtc);
 
   Future<void> _submitReview(List<Task> tasks) async {
     final token = context.read<AppState>().accessToken;
@@ -40,14 +40,14 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       _error = null;
     });
 
-    final api = ApiService();
+    final api = ApiService(ApiConstants.baseUrl, null);
     final reviewedAtIso = DateTime.now().toUtc().toIso8601String();
 
     try {
-      // Strategy: PATCH each completed task with a reviewed_at UTC timestamp
+      // PATCH each completed task with a reviewed_at UTC timestamp
       for (final t in tasks) {
         if (!t.completed) continue;
-        final path = ApiConstants.taskById(t.id as String); // '/tasks/{id}'
+        final path = ApiConstants.taskById(t.id.toString()); // '/tasks/{id}'
         final res = await api.patch(
           path,
           token: token,
@@ -59,7 +59,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
       }
 
       if (!mounted) return;
-      // Refresh tasks & streak from backend; local UTC truth is already set
+      // Refresh tasks & streak from backend
       await context.read<AppState>().syncTasks();
 
       if (!mounted) return;
@@ -77,8 +77,16 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final todayKey = _yyyyMmDd(DateTime.now());
-    final todayTasks = app.tasks.where((t) => t.dayKey == todayKey).toList()
-      ..sort((a, b) => a.createdAtUtc.compareTo(b.createdAtUtc));
+
+    final todayTasks = app.tasks
+        .where((t) => (t.dayKey) == todayKey)
+        .toList()
+      ..sort((a, b) {
+        final aT = a.createdAtUtc;
+        final bT = b.createdAtUtc;
+        return aT.compareTo(bT);
+      });
+
     final completedToday = todayTasks.where((t) => t.completed).toList();
 
     return Scaffold(
@@ -103,7 +111,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
           if (_error != null)
             Container(
               width: double.infinity,
-              color: Colors.red.withOpacity(0.1),
+              color: Colors.red.withOpacity(0.1), // keep withOpacity per note
               padding: const EdgeInsets.all(12),
               child: Text(
                 _error!,
@@ -112,9 +120,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
             ),
           ListTile(
             title: Text('Completed today: ${completedToday.length}'),
-            subtitle: Text(
-              'Session: ${_prettyDuration(_elapsed)} • Streak: ${app.currentStreak}',
-            ),
+            subtitle: Text('Session: ${_prettyDuration(_elapsed)} • Streak: ${app.currentStreak}'),
           ),
           const Divider(height: 0),
           Expanded(
@@ -122,10 +128,15 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> {
               itemCount: todayTasks.length,
               itemBuilder: (context, i) {
                 final t = todayTasks[i];
+                final createdLocal = t.createdAtUtc?.toLocal();
                 return CheckboxListTile(
                   value: t.completed,
                   title: Text(t.title),
-                  subtitle: Text('Created: ${t.createdAtUtc.toLocal()}'),
+                  subtitle: Text(
+                    createdLocal != null
+                        ? 'Created: $createdLocal'
+                        : 'Created: —',
+                  ),
                   onChanged: (_) {
                     final idx = app.tasks.indexWhere((x) => x.id == t.id);
                     if (idx != -1) {
