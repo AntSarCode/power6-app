@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../config/api_constants.dart';
 
 /// Lightweight, generic API response wrapper.
 class ApiResponse {
@@ -18,12 +17,11 @@ class ApiResponse {
 }
 
 class ApiService {
-  static final String _resolvedBase = (ApiConstants.baseUrl).trim();
   final String baseUrl;
   final http.Client _client; // re-usable client for perf
 
-  ApiService({String? baseUrl, http.Client? client})
-      : baseUrl = ((baseUrl ?? _resolvedBase).trim()),
+  ApiService(String baseUrl, dynamic client)
+      : baseUrl = ((baseUrl).trim()),
         _client = client ?? http.Client() {
     if (this.baseUrl.isEmpty) {
       throw StateError(
@@ -157,6 +155,29 @@ class ApiService {
       return ApiResponse.failure(e.toString());
     }
   }
+
+  Future<ApiResponse> getTaskHistory({
+  required String token,
+  DateTime? from,
+  DateTime? to,
+}) async {
+  // backend expects YYYY-MM-DD in 'from_date' / 'to_date'
+  String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  final now = DateTime.now();
+  final DateTime fromDate = from ?? now.subtract(const Duration(days: 30));
+  final DateTime toDate = to ?? now;
+
+  return get(
+    "/tasks/history",
+    token: token,
+    query: {
+      "from_date": _ymd(fromDate),
+      "to_date": _ymd(toDate),
+    },
+  );
+}
 
   ApiResponse _toResponse(http.Response res) {
     final ok = res.statusCode >= 200 && res.statusCode < 300;

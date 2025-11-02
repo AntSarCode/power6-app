@@ -3,8 +3,7 @@ import '../config/api_constants.dart';
 import 'api_service.dart';
 
 class TaskService {
-  final _api = ApiService();
-
+  final _api = ApiService(ApiConstants.baseUrl, null);
   Future<ApiResponse> createTask({
     required String title,
     String? notes,

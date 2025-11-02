@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../config/api_constants.dart';
 import '../state/app_state.dart';
 import '../services/api_service.dart';
 
@@ -38,7 +39,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
 
     try {
-      final response = await ApiService().post(
+      final response = await ApiService(ApiConstants.baseUrl, token).post(
         '/stripe/create-checkout-session',
         token: token,
         body: {
