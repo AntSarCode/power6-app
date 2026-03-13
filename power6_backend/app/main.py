@@ -74,7 +74,7 @@ def _bootstrap_migrations(db_engine) -> None:
             except Exception:
                 pass
 
-                        # Ensure core columns exist
+            # Ensure core columns exist
             ident = f'{schema+"." if schema else ""}{target_table}'
 
             def ensure(col: str, ddl: str):

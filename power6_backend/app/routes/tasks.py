@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Date, cast
+from sqlalchemy import Date, cast as sa_cast
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -20,9 +20,20 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 # ----------------------------
 
 PRIORITY_MAP = {"low": 0, "normal": 1, "high": 2}
+ALLOWED_ORDER_FIELDS = {
+    "id",
+    "title",
+    "priority",
+    "completed",
+    "scheduled_for",
+    "created_at",
+    "completed_at",
+    "reviewed_at",
+    "streak_bound",
+}
 
 
-def _priority_to_db(v) -> int:
+def _priority_to_db(v: Any) -> int:
     if isinstance(v, int):
         return v if v in (0, 1, 2) else 1
     if isinstance(v, str):
@@ -42,7 +53,7 @@ def _coerce_user_id(current_user: User) -> int:
         return raw
     try:
         return int(raw)
-    except Exception:
+    except (TypeError, ValueError):
         digits = "".join(ch for ch in str(raw) if ch.isdigit())
         if not digits:
             raise HTTPException(status_code=401, detail="Invalid user id")
@@ -73,7 +84,7 @@ def _to_task_read(task: TaskModel) -> TaskRead:
     )
 
 
-def _check_active_limit(db: Session, uid: int):
+def _check_active_limit(db: Session, uid: int) -> None:
     count = (
         db.query(TaskModel)
         .filter(TaskModel.user_id == uid, TaskModel.completed.is_(False))
@@ -84,6 +95,39 @@ def _check_active_limit(db: Session, uid: int):
             status_code=400,
             detail="Active task limit reached (6). Complete or remove one to add a new task.",
         )
+
+
+def _get_owned_task(db: Session, uid: int, task_id: int) -> TaskModel:
+    task = (
+        db.query(TaskModel)
+        .filter(TaskModel.id == task_id, TaskModel.user_id == uid)
+        .first()
+    )
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return cast(TaskModel, task)
+
+
+def _apply_task_update(task: TaskModel, payload_data: dict[str, Any]) -> None:
+    prev_completed = bool(getattr(task, "completed", False))
+
+    if "priority" in payload_data:
+        payload_data["priority"] = _priority_to_db(payload_data["priority"])
+
+    completed_provided = "completed" in payload_data
+    new_completed = payload_data.pop("completed", None)
+
+    for key, value in payload_data.items():
+        setattr(task, key, value)
+
+    if completed_provided and new_completed is not None and new_completed != prev_completed:
+        if new_completed:
+            task.completed = True
+            if not getattr(task, "completed_at", None):
+                task.completed_at = _now_utc()
+        else:
+            task.completed = False
+            task.completed_at = None
 
 
 # ----------------------------
@@ -107,10 +151,13 @@ def list_tasks(
         q = q.filter(TaskModel.completed.is_(bool(completed)))
 
     if day is not None:
-        q = q.filter(cast(TaskModel.created_at, Date) == day)
+        q = q.filter(sa_cast(TaskModel.created_at, Date) == day)
 
     desc = order.startswith("-")
     field = order.lstrip("-")
+    if field not in ALLOWED_ORDER_FIELDS:
+        raise HTTPException(status_code=400, detail=f"Invalid order field: {field}")
+
     col = getattr(TaskModel, field)
     q = q.order_by(col.desc() if desc else col.asc())
 
@@ -118,19 +165,17 @@ def list_tasks(
     return [_to_task_read(t) for t in tasks]
 
 
-@router.get("/today", response_model=List[TaskRead])
-def get_today_tasks(
+@router.get("/active", response_model=List[TaskRead])
+def get_active_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    today = date.today()
     tasks = (
         db.query(TaskModel)
         .filter(
             TaskModel.user_id == uid,
             TaskModel.completed.is_(False),
-            cast(TaskModel.created_at, Date) <= today,
         )
         .order_by(TaskModel.priority.desc(), TaskModel.created_at.asc())
         .all()
@@ -155,8 +200,12 @@ def get_history(
         .filter(
             TaskModel.user_id == uid,
             TaskModel.completed.is_(True),
-            TaskModel.completed_at >= datetime.combine(from_date, datetime.min.time(), tzinfo=timezone.utc),
-            TaskModel.completed_at <= datetime.combine(to_date, datetime.max.time(), tzinfo=timezone.utc),
+            TaskModel.completed_at >= datetime.combine(
+                from_date, datetime.min.time(), tzinfo=timezone.utc
+            ),
+            TaskModel.completed_at <= datetime.combine(
+                to_date, datetime.max.time(), tzinfo=timezone.utc
+            ),
         )
         .order_by(TaskModel.completed_at.desc())
         .all()
@@ -198,30 +247,10 @@ def patch_task(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    prev_completed = bool(getattr(task, "completed", False))
+    task = _get_owned_task(db, uid, task_id)
     data = payload.model_dump(exclude_unset=True)
 
-    if "priority" in data:
-        data["priority"] = _priority_to_db(data["priority"])
-
-    completed_provided = "completed" in data
-    new_completed = data.pop("completed", None)
-
-    for k, v in data.items():
-        setattr(task, k, v)
-
-    if completed_provided and new_completed is not None and new_completed != prev_completed:
-        if new_completed:
-            task.completed = True
-            if not getattr(task, "completed_at", None):
-                task.completed_at = _now_utc()
-        else:
-            task.completed = False
-            task.completed_at = None
+    _apply_task_update(task, data)
 
     db.commit()
     db.refresh(task)
@@ -235,9 +264,7 @@ def toggle_task_completion(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = _get_owned_task(db, uid, task_id)
 
     if task.completed:
         task.completed = False
@@ -260,30 +287,10 @@ def update_task(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    prev_completed = bool(getattr(task, "completed", False))
-
+    task = _get_owned_task(db, uid, task_id)
     update_data = updated_task.model_dump(exclude_unset=True)
-    if "priority" in update_data:
-        update_data["priority"] = _priority_to_db(update_data["priority"])
 
-    completed_provided = "completed" in update_data
-    new_completed = update_data.pop("completed", None)
-
-    for key, value in update_data.items():
-        setattr(task, key, value)
-
-    if completed_provided and new_completed is not None and new_completed != prev_completed:
-        if new_completed:
-            task.completed = True
-            if not getattr(task, "completed_at", None):
-                task.completed_at = _now_utc()
-        else:
-            task.completed = False
-            task.completed_at = None
+    _apply_task_update(task, update_data)
 
     db.commit()
     db.refresh(task)
@@ -297,9 +304,7 @@ def delete_task(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    task = db.query(TaskModel).filter(TaskModel.id == task_id, TaskModel.user_id == uid).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    task = _get_owned_task(db, uid, task_id)
 
     db.delete(task)
     db.commit()
