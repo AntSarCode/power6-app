@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:power6_mobile/ui/theme.dart';
 import 'package:power6_mobile/state/app_state.dart';
-import 'package:power6_mobile/config/api_constants.dart';
 import 'package:power6_mobile/state/backend_adapter_api.dart';
-
 
 // Screens
 import 'package:power6_mobile/screens/login_screen.dart';
@@ -39,6 +37,7 @@ class Power6App extends StatelessWidget {
         ChangeNotifierProvider<AppState>(
           create: (_) => AppState(
             apiBaseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: ''),
+            backend: ApiBackendAdapter(),
           ),
         ),
         Provider(create: (_) => StreakService()),
