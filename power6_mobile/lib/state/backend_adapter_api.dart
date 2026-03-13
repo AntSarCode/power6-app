@@ -6,33 +6,41 @@ import 'package:power6_mobile/models/task.dart';
 class ApiBackendAdapter implements BackendAdapter {
   final ApiService _api = ApiService(ApiConstants.baseUrl, null);
 
-  Future<List<Task>?> fetchActiveTasks(String token) async {
-    final res = await _api.get(ApiConstants.normalize('/tasks/today'), token: token);
+  @override
+  Future<List<Task>?> fetchactiveTasks(String token) async {
+    final res = await _api.get(
+      ApiConstants.normalize('/tasks/active'),
+      token: token,
+    );
+
     if (!res.isSuccess || res.data == null) return <Task>[];
-    final list = (res.data!['items'] ?? res.data!['data'] ?? res.data!['results'] ?? res.data) as List<dynamic>;
-    return list.map((j) => Task.fromJson(j as Map<String, dynamic>)).toList();
+
+    final raw = res.data!;
+    final list = raw is List
+        ? raw
+        : (raw['items'] ?? raw['data'] ?? raw['results'] ?? <dynamic>[]);
+
+    return list
+        .map((j) => Task.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 
   @override
   Future<bool> updateTaskStatus(String token, String taskId, bool completed) async {
-    final res = await _api.patch(ApiConstants.taskById(taskId),
-        token: token, body: {'completed': completed});
+    final res = await _api.patch(
+      ApiConstants.taskById(taskId),
+      token: token,
+      body: {'completed': completed},
+    );
     return res.isSuccess;
   }
 
   @override
-  Future<int?> getCurrentStreak() async => null; // optional for now
+  Future<int?> getCurrentStreak() async => null;
 
   @override
   Future<bool> refreshStreak() async {
-    String? token;
-    await _api.post(ApiConstants.streakRefresh, token: token);
+    await _api.post(ApiConstants.streakRefresh);
     return true;
-  }
-
-  @override
-  Future<List<Task>?> fetchactiveTasks(String token) {
-    // TODO: implement fetchactiveTasks
-    throw UnimplementedError();
   }
 }

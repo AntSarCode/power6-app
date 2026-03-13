@@ -53,6 +53,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
         throw Exception('Not authenticated');
       }
       await _persistTask(newTask, token);
+      await context.read<AppState>().syncTasks();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Task "$title" saved successfully!')),
