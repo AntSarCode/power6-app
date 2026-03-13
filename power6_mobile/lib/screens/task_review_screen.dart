@@ -105,22 +105,19 @@ class _TaskReviewScreenState extends State<TaskReviewScreen>
     final app = context.watch<AppState>();
 
     // --- Build the today set using UTC day_key ---
-    final todayKeyUtc = _ymd(DateTime.now().toUtc());
-    final todayTasks = app.tasks
-        .where((t) {
-          final localKey = _ymd(t.createdAtUtc.toLocal());
-          return t.dayKey == todayKeyUtc || localKey == _ymd(DateTime.now());
-        })
-        .toList()
-      ..sort((a, b) {
-        final compBias = (b.completed ? 1 : 0) - (a.completed ? 1 : 0);
-        if (compBias != 0) return compBias;
-        final aWhen = a.completedAtUtc ?? a.createdAtUtc;
-        final bWhen = b.completedAtUtc ?? b.createdAtUtc;
-        return bWhen.compareTo(aWhen);
-      });
+    final activeTasks = app.tasks
+    .where((t) => !t.completed)
+    .toList()
+  ..sort((a, b) {
+    final aWhen = a.createdAtUtc;
+    final bWhen = b.createdAtUtc;
+    return bWhen.compareTo(aWhen);
+  });
 
-    final completedToday = todayTasks.where((t) => t.completed).toList();
+    final completedToday = app.tasks.where((t) {
+      final todayLocal = _ymd(DateTime.now());
+      return t.completed && t.dayKey == todayLocal;
+    }).toList();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -231,7 +228,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen>
                               ),
                               const Spacer(),
                               Text(
-                                '${completedToday.length} / ${todayTasks.length}',
+                                '${completedToday.length} / ${activeTasks.length}',
                                 style: const TextStyle(color: Colors.white70),
                               ),
                             ],
@@ -240,9 +237,9 @@ class _TaskReviewScreenState extends State<TaskReviewScreen>
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: LinearProgressIndicator(
-                              value: todayTasks.isEmpty
+                              value: activeTasks.isEmpty
                                   ? 0
-                                  : completedToday.length / todayTasks.length,
+                                  : completedToday.length / activeTasks.length,
                               minHeight: 10,
                               backgroundColor:
                                   Colors.white.withOpacity(0.08), // keep
@@ -250,7 +247,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${_percent(completedToday.length, todayTasks.length)}% complete',
+                            '${_percent(completedToday.length, activeTasks.length)}% complete',
                             style: const TextStyle(color: Colors.white70),
                           ),
                         ],
@@ -265,7 +262,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen>
                     opacity: _fadeIn,
                     child: _GlassPanel(
                       child: Column(
-                        children: todayTasks
+                        children: activeTasks
                             .map((t) => _TaskTile(
                                   task: t,
                                   onToggle: (value) => _toggleComplete(t, value),

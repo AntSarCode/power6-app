@@ -10,7 +10,7 @@ const int kStreakThreshold = 6;
 
 /// Lightweight adapter. Implementations handle actual backend calls.
 abstract class BackendAdapter {
-  Future<List<Task>?> fetchTodayTasks(String token);
+  Future<List<Task>?> fetchactiveTasks(String token);
   Future<bool> updateTaskStatus(String token, String taskId, bool completed);
   Future<int?> getCurrentStreak();
   Future<bool> refreshStreak();
@@ -19,7 +19,7 @@ abstract class BackendAdapter {
 /// No-op defaults to keep the app compiling even if services are broken.
 class _NoopBackendAdapter implements BackendAdapter {
   @override
-  Future<List<Task>?> fetchTodayTasks(String token) async => null;
+  Future<List<Task>?> fetchactiveTasks(String token) async => null;
 
   @override
   Future<bool> updateTaskStatus(String token, String taskId, bool completed) async => true;
@@ -166,7 +166,7 @@ class AppState extends ChangeNotifier {
     final token = _authToken;
     if (token == null) return;
     try {
-      final serverTasks = await _backend.fetchTodayTasks(token);
+      final serverTasks = await _backend.fetchactiveTasks(token);
       if (serverTasks != null) {
         _tasks
           ..clear()

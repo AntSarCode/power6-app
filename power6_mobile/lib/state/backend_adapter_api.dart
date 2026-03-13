@@ -6,8 +6,7 @@ import 'package:power6_mobile/models/task.dart';
 class ApiBackendAdapter implements BackendAdapter {
   final ApiService _api = ApiService(ApiConstants.baseUrl, null);
 
-  @override
-  Future<List<Task>?> fetchTodayTasks(String token) async {
+  Future<List<Task>?> fetchActiveTasks(String token) async {
     final res = await _api.get(ApiConstants.normalize('/tasks/today'), token: token);
     if (!res.isSuccess || res.data == null) return <Task>[];
     final list = (res.data!['items'] ?? res.data!['data'] ?? res.data!['results'] ?? res.data) as List<dynamic>;
@@ -29,5 +28,11 @@ class ApiBackendAdapter implements BackendAdapter {
     String? token;
     await _api.post(ApiConstants.streakRefresh, token: token);
     return true;
+  }
+
+  @override
+  Future<List<Task>?> fetchactiveTasks(String token) {
+    // TODO: implement fetchactiveTasks
+    throw UnimplementedError();
   }
 }
