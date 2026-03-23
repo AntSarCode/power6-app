@@ -1,5 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../services/auth_service.dart';
+import '../state/app_state.dart';
 
 import '../screens/home_screen.dart';
 import '../screens/task_input_screen.dart' as input;
@@ -19,6 +23,13 @@ class PowerMainNav extends StatefulWidget {
 
 class _PowerMainNavState extends State<PowerMainNav> {
   int _index = 0;
+
+  Future<void> _logout() async {
+    await AuthService().logout();
+    await context.read<AppState>().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
 
   // Order must match bottom destinations.
   late final List<Widget> _screens;
@@ -45,6 +56,13 @@ class _PowerMainNavState extends State<PowerMainNav> {
         title: const Text('Power6'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: _logout,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: Stack(
         children: [

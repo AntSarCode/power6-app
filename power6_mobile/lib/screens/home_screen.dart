@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
+import '../widgets/logout_pill.dart';
 import '../widgets/task_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -27,6 +28,14 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leadingWidth: 56,
+        actions: const <Widget>[
+          Padding(
+            padding: EdgeInsets.only(right: 12.0),
+            child: Center(
+              child: LogoutPill.compact(),
+            ),
+          ),
+        ],
         leading: Padding(
           padding: const EdgeInsets.only(left: 16.0),
           child: Image.asset(
@@ -153,6 +162,26 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: _MetricCard(
+                                  icon: Icons.local_fire_department_rounded,
+                                  title: 'Current Streak',
+                                  value: '$streak days',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _MetricCard(
+                                  icon: Icons.today_outlined,
+                                  title: 'Today Summary',
+                                  value: '$completedToday / $totalToday complete',
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -275,6 +304,50 @@ class _DailyProgressBar extends StatelessWidget {
               ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70)),
         ),
       ],
+    );
+  }
+}
+
+
+class _MetricCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+
+  const _MetricCard({required this.icon, required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.surface.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: cs.secondary),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

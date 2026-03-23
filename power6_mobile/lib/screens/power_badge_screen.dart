@@ -1,5 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../state/app_state.dart';
 
 class PowerBadgeScreen extends StatelessWidget {
   const PowerBadgeScreen({super.key});
@@ -24,6 +27,9 @@ class PowerBadgeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    final unlocked = appState.todayEarnedStreak;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -70,7 +76,10 @@ class PowerBadgeScreen extends StatelessWidget {
                 childAspectRatio: 1,
               ),
               itemCount: _badges.length,
-              itemBuilder: (context, i) => _BadgeTile(name: _badges[i]),
+              itemBuilder: (context, i) => _BadgeTile(
+                name: _badges[i],
+                achieved: unlocked && i == 0,
+              ),
             ),
           ),
         ],
@@ -81,7 +90,8 @@ class PowerBadgeScreen extends StatelessWidget {
 
 class _BadgeTile extends StatelessWidget {
   final String name;
-  const _BadgeTile({required this.name});
+  final bool achieved;
+  const _BadgeTile({required this.name, this.achieved = false});
 
   @override
   Widget build(BuildContext context) {
@@ -92,8 +102,11 @@ class _BadgeTile extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(0, 0, 0, 0.35),
-            border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+            color: achieved ? const Color.fromRGBO(10, 58, 49, 0.55) : const Color.fromRGBO(0, 0, 0, 0.35),
+            border: Border.all(
+              color: achieved ? const Color.fromRGBO(100, 255, 218, 0.85) : const Color.fromRGBO(0, 150, 136, 0.25),
+              width: achieved ? 1.4 : 1,
+            ),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -110,12 +123,21 @@ class _BadgeTile extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  name.replaceAll('_', ' '),
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
+                padding: const EdgeInsets.only(bottom: 10, left: 6, right: 6),
+                child: Column(
+                  children: [
+                    Text(
+                      name.replaceAll('_', ' '),
+                      style: TextStyle(fontSize: 12, color: achieved ? Colors.white : Colors.white70),
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      achieved ? 'Unlocked' : 'Locked',
+                      style: TextStyle(fontSize: 10, color: achieved ? const Color.fromRGBO(100, 255, 218, 0.9) : Colors.white38),
+                    ),
+                  ],
                 ),
               ),
             ],
