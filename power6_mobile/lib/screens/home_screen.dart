@@ -186,7 +186,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Today's Tasks',
+                    "Today's Tasks",
                     style: Theme.of(context)
                         .textTheme
                         .titleMedium
@@ -204,7 +204,7 @@ class HomeScreen extends StatelessWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'No tasks yet. Add up to six and we'll help you prioritize. Unfinished items stay visible so review, streak, and dashboard counts stay aligned.',
+                                "No tasks yet. Add up to six and we'll help you prioritize. Unfinished items stay visible so review, streak, and dashboard counts stay aligned.",
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium

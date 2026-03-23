@@ -182,7 +182,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> with SingleTickerPr
                               const Icon(Icons.fact_check, color: Colors.tealAccent),
                               const SizedBox(width: 8),
                               Text(
-                                'Today's Progress',
+                                "Today's Progress",
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                               ),
                               const Spacer(),
