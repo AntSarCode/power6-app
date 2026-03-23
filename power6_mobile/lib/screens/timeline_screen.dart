@@ -224,11 +224,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
     final created = t.createdAtUtc.toLocal();
     final completed = t.completedAtUtc?.toLocal();
     if (completed != null) {
-      final ago = DateTime.now().toUtc().difference(t.completedAtUtc!.toUtc());
+      final ago = DateTime.now().difference(completed);
       return Text('Completed ${_pretty(ago)} ago');
     } else {
       final diff = DateTime.now().difference(created);
-      return Text('Open for ' + _pretty(diff));
+      return Text('Open for ${_pretty(diff)}');
     }
   }
 
@@ -246,7 +246,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     String _ymd(DateTime d) => _formatYmd(d);
 
     for (final t in tasks) {
-      final when = (t.completedAtUtc ?? t.createdAtUtc).toUtc();
+      final when = (t.completedAtUtc ?? t.createdAtUtc).toLocal();
       final key = _ymd(when);
       byDay.putIfAbsent(key, () => <Task>[]).add(t);
     }

@@ -14,7 +14,8 @@ class Task {
   final DateTime? completedAtUtc;
   final DateTime? reviewedAtUtc;
 
-  /// Local day grouping key
+  /// Local day grouping key persisted for UI/state purposes.
+  /// This should represent the task's effective local day.
   final String dayKey;
 
   /// Whether this task contributes to streak
@@ -113,6 +114,17 @@ class Task {
     return _yyyyMmDd(local);
   }
 
+
+  DateTime get effectiveAtUtc => completedAtUtc ?? createdAtUtc;
+
+  String get localDayKey => _yyyyMmDd(effectiveAtUtc.toLocal());
+
+  Task normalizeLocalDayKey() {
+    final normalized = localDayKey;
+    if (normalized == dayKey) return this;
+    return copyWith(dayKey: normalized);
+  }
+
   // ----------------- JSON -----------------
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -127,7 +139,11 @@ class Task {
     final reviewedUtc =
         _asDateTime(json['reviewed_at'] ?? json['reviewedAt'])?.toUtc();
 
-    final dk = (json['day_key'] as String?) ?? _deriveLocalDayKey(createdUtc);
+    final serverDayKey = (json['day_key'] as String?);
+    final effectiveUtc = completedUtc ?? createdUtc;
+    final dk = (serverDayKey != null && serverDayKey.isNotEmpty)
+        ? _deriveLocalDayKey(effectiveUtc)
+        : _deriveLocalDayKey(effectiveUtc);
 
     return Task(
       id: _asInt(json['id']),

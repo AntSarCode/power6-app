@@ -4,7 +4,11 @@ import '../services/auth_service.dart';
 import '../state/app_state.dart';
 
 class LogoutPill extends StatelessWidget {
-  const LogoutPill({super.key});
+  final bool compact;
+
+  const LogoutPill({super.key, this.compact = false});
+
+  const LogoutPill.compact({super.key}) : compact = true;
 
   Future<void> _doLogout(BuildContext context) async {
     await AuthService().logout();
@@ -19,6 +23,14 @@ class LogoutPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return TextButton.icon(
+        onPressed: () => _doLogout(context),
+        icon: const Icon(Icons.logout, size: 18),
+        label: const Text('Logout'),
+      );
+    }
+
     return FloatingActionButton.extended(
       heroTag: 'logout-pill',
       onPressed: () => _doLogout(context),

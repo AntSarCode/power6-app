@@ -52,12 +52,11 @@ class AppState extends ChangeNotifier {
 
   String get _todayKey => _yyyyMmDd(DateTime.now());
 
+  String _taskLocalDayKey(Task task) => task.localDayKey;
+
   List<Task> get todayTasks {
     final key = _todayKey;
-    final items = _tasks.where((t) {
-      final localCreatedKey = _yyyyMmDd(t.createdAtUtc.toLocal());
-      return t.dayKey == key || localCreatedKey == key;
-    }).toList()
+    final items = _tasks.where((t) => _taskLocalDayKey(t) == key).toList()
       ..sort((a, b) {
         if (a.completed != b.completed) return a.completed ? 1 : -1;
         return a.createdAtUtc.compareTo(b.createdAtUtc);
@@ -106,7 +105,7 @@ class AppState extends ChangeNotifier {
     final Map<String, int> counts = <String, int>{};
     for (final t in _tasks) {
       if (!t.completed || !t.streakBound) continue;
-      counts.update(t.dayKey, (v) => v + 1, ifAbsent: () => 1);
+      counts.update(_taskLocalDayKey(t), (v) => v + 1, ifAbsent: () => 1);
     }
     return counts.map((k, v) => MapEntry(k, v >= kStreakThreshold));
   }
@@ -169,7 +168,8 @@ class AppState extends ChangeNotifier {
       _tasks.addAll(
         jsonList
             .whereType<Map<String, dynamic>>()
-            .map(Task.fromJson),
+            .map(Task.fromJson)
+            .map((task) => task.normalizeLocalDayKey()),
       );
     }
     recalcStreakLocal(notify: false);
@@ -182,7 +182,9 @@ class AppState extends ChangeNotifier {
     try {
       final serverTasks = await _backend.fetchactiveTasks(token);
       if (serverTasks != null) {
-        _mergeServerTasks(serverTasks);
+        _mergeServerTasks(
+          serverTasks.map((task) => task.normalizeLocalDayKey()).toList(),
+        );
         await _persist();
       }
       recalcStreakLocal();
@@ -206,7 +208,9 @@ class AppState extends ChangeNotifier {
 
     final List<Task> next = merged.values.toList()
       ..sort((a, b) {
-        if (a.dayKey != b.dayKey) return a.dayKey.compareTo(b.dayKey);
+        final aKey = _taskLocalDayKey(a);
+        final bKey = _taskLocalDayKey(b);
+        if (aKey != bKey) return aKey.compareTo(bKey);
         if (a.completed != b.completed) return a.completed ? 1 : -1;
         return a.createdAtUtc.compareTo(b.createdAtUtc);
       });
@@ -216,11 +220,7 @@ class AppState extends ChangeNotifier {
       ..addAll(next);
   }
 
-  bool _isToday(Task task) {
-    final todayKey = _todayKey;
-    final localCreatedKey = _yyyyMmDd(task.createdAtUtc.toLocal());
-    return task.dayKey == todayKey || localCreatedKey == todayKey;
-  }
+  bool _isToday(Task task) => _taskLocalDayKey(task) == _todayKey;
 
   Future<void> toggleTaskCompletion(int index, {required bool force}) async {
     final token = _authToken;
