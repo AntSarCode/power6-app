@@ -233,7 +233,7 @@ class _StreakView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Today's streak progress',
+                      "Today's streak progress",
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
