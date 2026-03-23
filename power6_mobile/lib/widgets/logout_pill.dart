@@ -9,7 +9,7 @@ class LogoutPill extends StatelessWidget {
   Future<void> _doLogout(BuildContext context) async {
     await AuthService().logout();
 
-    context.read<AppState>().logout();
+    await context.read<AppState>().logout();
 
     // Route back to login and clear back stack
     if (context.mounted) {

@@ -1,22 +1,20 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:power6_mobile/models/task.dart';
 import 'package:power6_mobile/models/user.dart';
 
-/// Streak threshold (how many completed tasks earn a day of streak credit)
 const int kStreakThreshold = 6;
 
-/// Lightweight adapter. Implementations handle actual backend calls.
 abstract class BackendAdapter {
   Future<List<Task>?> fetchactiveTasks(String token);
   Future<bool> updateTaskStatus(String token, String taskId, bool completed);
-  Future<int?> getCurrentStreak();
-  Future<bool> refreshStreak();
+  Future<int?> getCurrentStreak(String token);
+  Future<bool> refreshStreak(String token);
 }
 
-/// No-op defaults to keep the app compiling even if services are broken.
 class _NoopBackendAdapter implements BackendAdapter {
   @override
   Future<List<Task>?> fetchactiveTasks(String token) async => null;
@@ -25,15 +23,13 @@ class _NoopBackendAdapter implements BackendAdapter {
   Future<bool> updateTaskStatus(String token, String taskId, bool completed) async => true;
 
   @override
-  Future<int?> getCurrentStreak() async => null;
+  Future<int?> getCurrentStreak(String token) async => null;
 
   @override
-  Future<bool> refreshStreak() async => true;
+  Future<bool> refreshStreak(String token) async => true;
 }
 
-/// Global application state (tasks, auth, streak)
 class AppState extends ChangeNotifier {
-  // ---------------- Fields ----------------
   static const String _storageKey = 'tasks';
 
   final BackendAdapter _backend;
@@ -45,47 +41,69 @@ class AppState extends ChangeNotifier {
 
   final String? apiBaseUrl;
 
-  // ---------------- Ctors -----------------
-  AppState({this.apiBaseUrl, BackendAdapter? backend}) : _backend = backend ?? _NoopBackendAdapter() {
+  AppState({this.apiBaseUrl, BackendAdapter? backend})
+      : _backend = backend ?? _NoopBackendAdapter() {
     _loadTasks();
   }
 
-  // ---------------- Getters --------------
   List<Task> get tasks => List.unmodifiable(_tasks);
   String? get accessToken => _authToken;
   User? get user => _user;
 
-  int get completedCountToday {
-    final todayKey = _yyyyMmDd(DateTime.now());
-    return _tasks.where((t) => t.dayKey == todayKey && t.completed && t.streakBound).length;
+  String get _todayKey => _yyyyMmDd(DateTime.now());
+
+  List<Task> get todayTasks {
+    final key = _todayKey;
+    final items = _tasks.where((t) {
+      final localCreatedKey = _yyyyMmDd(t.createdAtUtc.toLocal());
+      return t.dayKey == key || localCreatedKey == key;
+    }).toList()
+      ..sort((a, b) {
+        if (a.completed != b.completed) return a.completed ? 1 : -1;
+        return a.createdAtUtc.compareTo(b.createdAtUtc);
+      });
+    return List.unmodifiable(items);
   }
 
+  List<Task> get todayActiveTasks =>
+      List.unmodifiable(todayTasks.where((t) => !t.completed).toList());
+
+  List<Task> get todayCompletedTasks =>
+      List.unmodifiable(todayTasks.where((t) => t.completed).toList());
+
+  List<Task> get todayCompletedStreakTasks => List.unmodifiable(
+        todayTasks.where((t) => t.completed && t.streakBound).toList(),
+      );
+
+  int get todayTaskCount => todayTasks.length;
+  int get todayActiveCount => todayActiveTasks.length;
+  int get todayCompletedCount => todayCompletedTasks.length;
+  int get completedCountToday => todayCompletedStreakTasks.length;
   bool get todayEarnedStreak => completedCountToday >= kStreakThreshold;
+  bool get todayCompleted => todayCompletedCount > 0;
+  double get todayProgressPercent =>
+      todayTaskCount == 0 ? 0 : (todayCompletedCount / todayTaskCount).clamp(0, 1).toDouble();
 
-  get todayCompleted => null;
-
-  // ---------------- Auth ------------------
-  void setAuthToken(String token, {User? user}) {
+  Future<void> setAuthToken(String token, {User? user}) async {
     _authToken = token;
     _user = user;
-    syncTasks();
-    // After tasks sync completes, we'll recompute locally and also try server.
-    loadStreak();
     notifyListeners();
+    await syncTasks();
+    await loadStreak();
   }
 
-  void logout() {
+  Future<void> logout() async {
     _authToken = null;
     _user = null;
     _tasks.clear();
     currentStreak = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
     notifyListeners();
   }
 
-  // ---------------- Streak (Fix B) ----------------
-  /// Derive a map of day_key -> earned(bool) based on locally cached tasks.
   Map<String, bool> _earnedByDayFromTasks() {
-    final Map<String, int> counts = {};
+    final Map<String, int> counts = <String, int>{};
     for (final t in _tasks) {
       if (!t.completed || !t.streakBound) continue;
       counts.update(t.dayKey, (v) => v + 1, ifAbsent: () => 1);
@@ -93,7 +111,6 @@ class AppState extends ChangeNotifier {
     return counts.map((k, v) => MapEntry(k, v >= kStreakThreshold));
   }
 
-  /// Compute current streak by walking back from today while each day earned streak credit.
   int _computeCurrentStreakLocal({DateTime? now}) {
     final earned = _earnedByDayFromTasks();
     DateTime cursor = _truncateToLocalDay(now ?? DateTime.now());
@@ -108,15 +125,12 @@ class AppState extends ChangeNotifier {
     return streak;
   }
 
-  /// Recalc streak from local tasks and update state immediately.
   void recalcStreakLocal({bool notify = true}) {
     final s = _computeCurrentStreakLocal();
     if (s != currentStreak) {
       currentStreak = s;
-      if (notify) notifyListeners();
-    } else if (notify) {
-      notifyListeners();
     }
+    if (notify) notifyListeners();
   }
 
   void setCurrentStreak(int value) {
@@ -126,37 +140,37 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> refreshAndLoadStreak() async {
-    if (_authToken == null) return;
-    await _backend.refreshStreak();
+    final token = _authToken;
+    if (token == null || token.isEmpty) return;
+    await _backend.refreshStreak(token);
     await loadStreak();
   }
 
-  /// Try to load streak from backend; fall back to local computation.
   Future<void> loadStreak() async {
-    if (_authToken == null) return;
+    final token = _authToken;
+    if (token == null || token.isEmpty) return;
     try {
-      final server = await _backend.getCurrentStreak();
+      final server = await _backend.getCurrentStreak(token);
       if (server != null) {
         setCurrentStreak(server);
         return;
       }
-    } catch (_) {
-      // ignore and fall back to local
-    }
+    } catch (_) {}
     recalcStreakLocal();
   }
 
-  // ---------------- Tasks -----------------
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final taskList = prefs.getString(_storageKey);
 
     _tasks.clear();
-    if (taskList != null) {
+    if (taskList != null && taskList.isNotEmpty) {
       final List<dynamic> jsonList = jsonDecode(taskList) as List<dynamic>;
-      _tasks.addAll(jsonList
-          .cast<Map<String, dynamic>>()
-          .map((item) => Task.fromJson(item)));
+      _tasks.addAll(
+        jsonList
+            .whereType<Map<String, dynamic>>()
+            .map(Task.fromJson),
+      );
     }
     recalcStreakLocal(notify: false);
     notifyListeners();
@@ -164,46 +178,93 @@ class AppState extends ChangeNotifier {
 
   Future<void> syncTasks() async {
     final token = _authToken;
-    if (token == null) return;
+    if (token == null || token.isEmpty) return;
     try {
       final serverTasks = await _backend.fetchactiveTasks(token);
       if (serverTasks != null) {
-        _tasks
-          ..clear()
-          ..addAll(serverTasks);
+        _mergeServerTasks(serverTasks);
         await _persist();
-        recalcStreakLocal();
       }
+      recalcStreakLocal();
     } catch (_) {
-      // keep local cache, still recompute from what we have
       recalcStreakLocal();
     }
   }
 
+  void _mergeServerTasks(List<Task> serverTasks) {
+    final Map<int, Task> merged = <int, Task>{
+      for (final task in serverTasks) task.id: task,
+    };
+
+    for (final local in _tasks) {
+      final keepLocalCompleted = local.completed && _isToday(local);
+      final keepReviewedTask = local.reviewedAtUtc != null && _isToday(local);
+      if ((keepLocalCompleted || keepReviewedTask) && !merged.containsKey(local.id)) {
+        merged[local.id] = local;
+      }
+    }
+
+    final List<Task> next = merged.values.toList()
+      ..sort((a, b) {
+        if (a.dayKey != b.dayKey) return a.dayKey.compareTo(b.dayKey);
+        if (a.completed != b.completed) return a.completed ? 1 : -1;
+        return a.createdAtUtc.compareTo(b.createdAtUtc);
+      });
+
+    _tasks
+      ..clear()
+      ..addAll(next);
+  }
+
+  bool _isToday(Task task) {
+    final todayKey = _todayKey;
+    final localCreatedKey = _yyyyMmDd(task.createdAtUtc.toLocal());
+    return task.dayKey == todayKey || localCreatedKey == todayKey;
+  }
+
   Future<void> toggleTaskCompletion(int index, {required bool force}) async {
     final token = _authToken;
-    if (token == null) return;
-    if (index < 0 || index >= _tasks.length) return;
+    if (token == null || token.isEmpty) {
+      debugPrint('[APPSTATE] toggle abort: no token');
+      return;
+    }
+    if (index < 0 || index >= _tasks.length) {
+      debugPrint('[APPSTATE] toggle abort: bad index $index');
+      return;
+    }
 
     final Task original = _tasks[index];
+    final bool newCompletedState = force;
+    if (original.completed == newCompletedState) {
+      return;
+    }
+
     final Task updated = original.copyWith(
-      completed: !original.completed,
-      completedAtUtc: original.completed ? null : DateTime.now().toUtc(),
-      // Keep dayKey stable; it is derived at creation time from createdAtUtc.
+      completed: newCompletedState,
+      completedAtUtc: newCompletedState ? DateTime.now().toUtc() : null,
+      clearCompletedAtUtc: !newCompletedState,
     );
 
     _tasks[index] = updated;
     recalcStreakLocal();
+    notifyListeners();
 
-    final ok = await _backend.updateTaskStatus(token, original.id.toString(), updated.completed);
+    final ok = await _backend.updateTaskStatus(
+      token,
+      original.id.toString(),
+      newCompletedState,
+    );
+
     if (!ok) {
       _tasks[index] = original;
       recalcStreakLocal();
-    } else {
-      await _persist();
-      // Optionally check server’s streak calculation; if unavailable, local stands.
-      await loadStreak();
+      notifyListeners();
+      return;
     }
+
+    await _persist();
+    await syncTasks();
+    await loadStreak();
   }
 
   Future<void> _persist() async {
@@ -213,7 +274,6 @@ class AppState extends ChangeNotifier {
   }
 }
 
-// ---------------- Utilities ----------------
 DateTime _truncateToLocalDay(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
 String _yyyyMmDd(DateTime d) =>

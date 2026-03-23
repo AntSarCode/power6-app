@@ -45,9 +45,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // Safely parse userResponse.data to User model
         final userMap = userResponse.data!['user'] as Map<String, dynamic>?;
         final user = userMap != null ? User.fromJson(userMap) : null;
-        context.read<AppState>().setAuthToken(tokenData['access_token'] as String, user: user);
+        await context.read<AppState>().setAuthToken(tokenData['access_token'] as String, user: user);
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/');
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() {
           _error = userResponse.error ?? 'Failed to load user info';
