@@ -1,4 +1,4 @@
-// task.dart (patched to integrate Fix A: unified timestamps, dayKey, UTC handling)
+// task.dart (cleaned and corrected model for Power6)
 
 class Task {
   final int id;
@@ -7,17 +7,17 @@ class Task {
   final String? notes;
   final bool completed;
   final int priority; // 0=low,1=med,2=high
-  final DateTime? scheduledFor; // local or utc accepted; serialized as ISO-8601
+  final DateTime? scheduledFor;
 
-  /// UTC timestamps per Fix A
+  /// UTC timestamps
   final DateTime createdAtUtc;
   final DateTime? completedAtUtc;
   final DateTime? reviewedAtUtc;
 
-  /// Local-calendar grouping key (e.g., '2025-10-26')
+  /// Local day grouping key
   final String dayKey;
 
-  /// Whether this task should count toward the streak threshold
+  /// Whether this task contributes to streak
   final bool streakBound;
 
   const Task({
@@ -32,7 +32,7 @@ class Task {
     this.completedAtUtc,
     this.reviewedAtUtc,
     required this.dayKey,
-    required this.streakBound, required completedAt,
+    required this.streakBound,
   });
 
   Task copyWith({
@@ -45,9 +45,11 @@ class Task {
     DateTime? scheduledFor,
     DateTime? createdAtUtc,
     DateTime? completedAtUtc,
+    bool clearCompletedAtUtc = false,
     DateTime? reviewedAtUtc,
+    bool clearReviewedAtUtc = false,
     String? dayKey,
-    bool? streakBound, DateTime? completedAt,
+    bool? streakBound,
   }) {
     return Task(
       id: id ?? this.id,
@@ -58,14 +60,15 @@ class Task {
       priority: priority ?? this.priority,
       scheduledFor: scheduledFor ?? this.scheduledFor,
       createdAtUtc: createdAtUtc ?? this.createdAtUtc,
-      completedAtUtc: completedAtUtc ?? this.completedAtUtc,
-      reviewedAtUtc: reviewedAtUtc ?? this.reviewedAtUtc,
+      completedAtUtc: clearCompletedAtUtc ? null : (completedAtUtc ?? this.completedAtUtc),
+      reviewedAtUtc: clearReviewedAtUtc ? null : (reviewedAtUtc ?? this.reviewedAtUtc),
       dayKey: dayKey ?? this.dayKey,
-      streakBound: streakBound ?? this.streakBound, completedAt: null,
+      streakBound: streakBound ?? this.streakBound,
     );
   }
 
   // ----------------- helpers -----------------
+
   static int _asInt(dynamic v, {int? fallback}) {
     if (v is int) return v;
     if (v is String) {
@@ -98,7 +101,7 @@ class Task {
 
   static DateTime _requireDateTime(dynamic v, {String field = 'datetime'}) {
     final dt = _asDateTime(v);
-    if (dt == null) throw FormatException('Expected ISO-8601 in "$field"');
+    if (dt == null) throw FormatException('Expected ISO-8601 in "${field}"');
     return dt;
   }
 
@@ -111,10 +114,18 @@ class Task {
   }
 
   // ----------------- JSON -----------------
+
   factory Task.fromJson(Map<String, dynamic> json) {
-    final createdUtc = _requireDateTime(json['created_at'] ?? json['createdAt'] ?? json['created_at_utc'], field: 'created_at').toUtc();
-    final completedUtc = _asDateTime(json['completed_at'] ?? json['completedAt'] ?? json['completed_at_utc'])?.toUtc();
-    final reviewedUtc = _asDateTime(json['reviewed_at'] ?? json['reviewedAt'] ?? json['reviewed_at_utc'])?.toUtc();
+    final createdUtc = _requireDateTime(
+      json['created_at'] ?? json['createdAt'] ?? json['created_at_utc'],
+      field: 'created_at',
+    ).toUtc();
+
+    final completedUtc =
+        _asDateTime(json['completed_at'] ?? json['completedAt'])?.toUtc();
+
+    final reviewedUtc =
+        _asDateTime(json['reviewed_at'] ?? json['reviewedAt'])?.toUtc();
 
     final dk = (json['day_key'] as String?) ?? _deriveLocalDayKey(createdUtc);
 
@@ -130,11 +141,9 @@ class Task {
       completedAtUtc: completedUtc,
       reviewedAtUtc: reviewedUtc,
       dayKey: dk,
-      streakBound: _asBool(json['streak_bound'] ?? json['streakBound'], fallback: false), completedAt: null,
+      streakBound: _asBool(json['streak_bound'] ?? json['streakBound'], fallback: false),
     );
   }
-
-  get completedAt => null;
 
   Map<String, dynamic> toJson({bool forCreate = false}) {
     final map = <String, dynamic>{
@@ -150,10 +159,11 @@ class Task {
       'day_key': dayKey,
       'streak_bound': streakBound,
     };
-    // Preserve previous behavior: only send 'completed' on non-create
+
     if (!forCreate) {
       map['completed'] = completed;
     }
+
     return map;
   }
 }

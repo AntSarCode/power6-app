@@ -14,6 +14,8 @@ class ApiResponse {
   ApiResponse.failure(this.error)
       : isSuccess = false,
         data = null;
+
+  get statusCode => null;
 }
 
 class ApiService {

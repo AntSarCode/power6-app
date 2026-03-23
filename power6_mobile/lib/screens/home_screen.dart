@@ -1,21 +1,25 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../widgets/task_card.dart';
+
 import '../state/app_state.dart';
+import '../widgets/task_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  static const String _appVersion = "1.0";
+  static const String _appVersion = '1.0';
   static const String _graphicsBase = 'assets/graphics';
 
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    final tasks = appState.tasks;
-    final user = appState.user?.username ?? "User";
+    final tasks = appState.todayTasks;
+    final user = appState.user?.username ?? 'User';
     final streak = appState.currentStreak;
+    final completedToday = appState.todayCompletedCount;
+    final totalToday = appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -32,20 +36,19 @@ class HomeScreen extends StatelessWidget {
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
         ),
-        // No center title and no actions — brand mark sits top-left
         title: const SizedBox.shrink(),
         centerTitle: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: Stack(
-        children: [
+        children: <Widget>[
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
+                colors: <Color>[
                   Color(0xFF0A0F12),
                   Color.fromRGBO(15, 31, 36, 0.95),
                   Color(0xFF0A0F12),
@@ -72,13 +75,12 @@ class HomeScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Centered title and subtitle
-                  Text(
+                children: <Widget>[
+                  const Text(
                     'Power6',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'Montserrat', // match your logo font family
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.2,
@@ -99,10 +101,10 @@ class HomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                        children: <Widget>[
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
+                            children: <Widget>[
                               Icon(Icons.local_fire_department_rounded, size: 28, color: cs.secondary),
                               const SizedBox(width: 8),
                               Expanded(
@@ -124,33 +126,72 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [
+                                  children: <Widget>[
                                     Icon(Icons.local_fire_department_rounded, size: 16, color: cs.secondary),
                                     const SizedBox(width: 6),
-                                    Text('Streak: $streak',
-                                        style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      'Streak: $streak',
+                                      style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600),
+                                    ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          _DailyProgressBar(
-                              completed: tasks.where((t) => t.completed).length, total: 6),
+                          _DailyProgressBar(completed: completedToday, total: totalToday),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: <Widget>[
+                              _SummaryChip(icon: Icons.check_circle_outline, label: '$completedToday completed'),
+                              _SummaryChip(icon: Icons.list_alt_outlined, label: '${appState.todayActiveCount} remaining'),
+                              _SummaryChip(
+                                icon: appState.todayEarnedStreak ? Icons.emoji_events_outlined : Icons.flag_outlined,
+                                label: appState.todayEarnedStreak ? '6-task milestone reached' : '${appState.completedCountToday}/6 streak tasks',
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (appState.todayEarnedStreak)
+                    _GlassPanel(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Icon(Icons.workspace_premium_outlined, color: cs.secondary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Badge milestone unlocked: you completed all 6 streak-bound tasks today.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.85)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (appState.todayEarnedStreak) const SizedBox(height: 16),
                   _GlassPanel(
                     child: _AboutSection(version: _appVersion),
                   ),
                   const SizedBox(height: 16),
-                  Text('Today\'s Tasks',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
+                  Text(
+                    'Today's Tasks',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                  ),
                   const SizedBox(height: 8),
                   if (tasks.isEmpty)
                     _GlassPanel(
@@ -158,12 +199,12 @@ class HomeScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                          children: <Widget>[
                             Icon(Icons.tips_and_updates_outlined, color: cs.secondary),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'No tasks yet. Add up to six and we\'ll help you prioritize. Unfinished tasks roll over to tomorrow.',
+                                'No tasks yet. Add up to six and we'll help you prioritize. Unfinished items stay visible so review, streak, and dashboard counts stay aligned.',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
@@ -188,7 +229,7 @@ class HomeScreen extends StatelessWidget {
                               title: task.title,
                               description: task.notes,
                               isCompleted: task.completed,
-                              onTap: () => appState.toggleTaskCompletion(index, force: false),
+                              onTap: null,
                             ),
                           ),
                         );
@@ -204,7 +245,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-
 class _DailyProgressBar extends StatelessWidget {
   final int completed;
   final int total;
@@ -213,10 +253,10 @@ class _DailyProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final pct = (completed / total).clamp(0, 1).toDouble();
+    final pct = total == 0 ? 0.0 : (completed / total).clamp(0, 1).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children: <Widget>[
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: LinearProgressIndicator(
@@ -227,12 +267,41 @@ class _DailyProgressBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text('$completed of $total tasks',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70))),
+        Text(
+          '$completed of $total tasks',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70)),
+        ),
       ],
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SummaryChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surface.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 16, color: cs.secondary),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -272,16 +341,18 @@ class _AboutSection extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           Row(
-            children: [
+            children: <Widget>[
               Icon(Icons.info_outline, color: cs.secondary),
               const SizedBox(width: 8),
-              Text('About (v$version)',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
+              Text(
+                'About (v$version)',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -323,7 +394,7 @@ class _Bullet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: <Widget>[
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Icon(Icons.check_circle_outline, size: 16, color: cs.secondary),

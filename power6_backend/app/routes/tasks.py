@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Date, cast as sa_cast
+from sqlalchemy import Date, and_, or_, cast as sa_cast
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -117,6 +117,9 @@ def _apply_task_update(task: TaskModel, payload_data: dict[str, Any]) -> None:
     completed_provided = "completed" in payload_data
     new_completed = payload_data.pop("completed", None)
 
+    # allow reviewed_at to be written directly from review screen
+    reviewed_at = payload_data.get("reviewed_at")
+
     for key, value in payload_data.items():
         setattr(task, key, value)
 
@@ -128,6 +131,12 @@ def _apply_task_update(task: TaskModel, payload_data: dict[str, Any]) -> None:
         else:
             task.completed = False
             task.completed_at = None
+            # if task is reopened it should no longer count as reviewed
+            task.reviewed_at = None
+
+    # if review timestamp explicitly provided, persist it
+    if reviewed_at is not None:
+        task.reviewed_at = reviewed_at
 
 
 # ----------------------------
@@ -165,19 +174,50 @@ def list_tasks(
     return [_to_task_read(t) for t in tasks]
 
 
+def _utc_day_bounds(target_day: Optional[date] = None) -> tuple[datetime, datetime]:
+    day = target_day or _now_utc().date()
+    start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
+    end = datetime.combine(day, datetime.max.time(), tzinfo=timezone.utc)
+    return start, end
+
+
 @router.get("/active", response_model=List[TaskRead])
 def get_active_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Return the user's current working task set for the app.
+
+    This intentionally includes:
+    - all incomplete tasks, and
+    - tasks completed today (UTC)
+
+    The frontend review/dashboard flows need both sets present after a sync so
+    completed-today items do not disappear immediately after PATCH/toggle.
+    """
     uid = _coerce_user_id(current_user)
+    day_start, day_end = _utc_day_bounds()
+
     tasks = (
         db.query(TaskModel)
         .filter(
             TaskModel.user_id == uid,
-            TaskModel.completed.is_(False),
+            or_(
+                TaskModel.completed.is_(False),
+                and_(
+                    TaskModel.completed.is_(True),
+                    TaskModel.completed_at.is_not(None),
+                    TaskModel.completed_at >= day_start,
+                    TaskModel.completed_at <= day_end,
+                ),
+            ),
         )
-        .order_by(TaskModel.priority.desc(), TaskModel.created_at.asc())
+        .order_by(
+            TaskModel.completed.asc(),
+            TaskModel.priority.desc(),
+            TaskModel.created_at.asc(),
+        )
         .all()
     )
     return [_to_task_read(t) for t in tasks]
@@ -222,6 +262,10 @@ def create_task(
     uid = _coerce_user_id(current_user)
     _check_active_limit(db, uid)
 
+    completed_at = task.completed_at
+    if task.completed and completed_at is None:
+        completed_at = _now_utc()
+
     db_task = TaskModel(
         title=task.title,
         notes=task.notes,
@@ -229,7 +273,7 @@ def create_task(
         scheduled_for=task.scheduled_for,
         completed=task.completed,
         streak_bound=task.streak_bound,
-        completed_at=task.completed_at,
+        completed_at=completed_at,
         user_id=uid,
         created_at=_now_utc(),
     )
@@ -309,3 +353,4 @@ def delete_task(
     db.delete(task)
     db.commit()
     return None
+

@@ -1,12 +1,14 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../state/app_state.dart';
-import '../models/task.dart';
 import 'dart:convert';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+
+import '../models/task.dart';
+import '../state/app_state.dart';
 
 class TaskInputScreen extends StatefulWidget {
   const TaskInputScreen({super.key});
@@ -17,7 +19,7 @@ class TaskInputScreen extends StatefulWidget {
 
 class _TaskInputScreenState extends State<TaskInputScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<String> _priorities = ['Low', 'Normal', 'High'];
+  final List<String> _priorities = <String>['Low', 'Normal', 'High'];
   String _priority = 'Normal';
   bool _streakBound = false;
   bool _isSaving = false;
@@ -35,6 +37,10 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       _error = null;
     });
 
+    final now = DateTime.now();
+    final nowUtc = now.toUtc();
+    final localDayKey = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
     final newTask = Task(
       id: 0,
       userId: 0,
@@ -43,21 +49,29 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       completed: false,
       priority: _priorities.indexOf(_priority),
       streakBound: _streakBound,
-      scheduledFor: DateTime.now(),
-      completedAt: null, createdAtUtc: DateTime.now(), dayKey: '',
+      scheduledFor: nowUtc,
+      createdAtUtc: nowUtc,
+      completedAtUtc: null,
+      reviewedAtUtc: null,
+      dayKey: localDayKey,
     );
 
     try {
-      final token = context.read<AppState>().accessToken;
+      final appState = context.read<AppState>();
+      final token = appState.accessToken;
       if (token == null || token.isEmpty) {
         throw Exception('Not authenticated');
       }
+
       await _persistTask(newTask, token);
-      await context.read<AppState>().syncTasks();
+      await appState.syncTasks();
+      await appState.loadStreak();
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Task "$title" saved successfully!')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Task "$title" saved successfully!')));
+
       setState(() {
         _isSaving = false;
         _controller.clear();
@@ -66,9 +80,9 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save task: $e')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Failed to save task: $e')));
       setState(() => _isSaving = false);
     }
   }
@@ -82,11 +96,11 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
     final uri = Uri.parse('$base/tasks');
     final res = await http.post(
       uri,
-      headers: {
+      headers: <String, String>{
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode(task.toJson()),
+      body: jsonEncode(task.toJson(forCreate: true)),
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Server responded ${res.statusCode}: ${res.body}');
@@ -111,13 +125,13 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
         elevation: 0,
       ),
       body: Stack(
-        children: [
+        children: <Widget>[
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
+                colors: <Color>[
                   Color(0xFF0A0F12),
                   Color.fromRGBO(15, 31, 36, 0.95),
                   Color(0xFF0A0F12),
@@ -159,9 +173,9 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
+                            children: <Widget>[
                               Row(
-                                children: [
+                                children: <Widget>[
                                   const Icon(Icons.add_task_rounded, color: Colors.tealAccent),
                                   const SizedBox(width: 8),
                                   Text('New Task', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
@@ -177,10 +191,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                 controller: _controller,
                                 style: const TextStyle(color: Colors.white),
                                 maxLines: 3,
-                                decoration: _inputDecoration(
-                                  hint: 'Enter your task',
-                                  icon: Icons.edit_outlined,
-                                ),
+                                decoration: _inputDecoration(hint: 'Enter your task', icon: Icons.edit_outlined),
                               ),
                               const SizedBox(height: 16),
                               Text('Priority', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white70)),
@@ -193,13 +204,14 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                     label: Text(p),
                                     selected: selected,
                                     onSelected: (_) => setState(() => _priority = p),
-                                    labelStyle: TextStyle(
-                                      color: selected ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    labelStyle: TextStyle(color: selected ? Colors.black : Colors.white, fontWeight: FontWeight.w600),
                                     selectedColor: const Color.fromRGBO(100, 255, 218, 0.9),
                                     backgroundColor: const Color.fromRGBO(255, 255, 255, 0.08),
-                                    shape: StadiumBorder(side: BorderSide(color: selected ? const Color.fromRGBO(100, 255, 218, 0.9) : const Color.fromRGBO(255, 255, 255, 0.12))),
+                                    shape: StadiumBorder(
+                                      side: BorderSide(
+                                        color: selected ? const Color.fromRGBO(100, 255, 218, 0.9) : const Color.fromRGBO(255, 255, 255, 0.12),
+                                      ),
+                                    ),
                                   );
                                 }).toList(),
                               ),
@@ -215,21 +227,9 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                   subtitle: const Text('Counts toward your daily 6 for streaks', style: TextStyle(color: Colors.white70)),
                                   value: _streakBound,
                                   onChanged: (v) => setState(() => _streakBound = v),
-                                  thumbColor: MaterialStateProperty.resolveWith<Color?>((states) {
-                                    if (states.contains(MaterialState.selected)) {
-                                      return const Color.fromRGBO(100, 255, 218, 0.95);
-                                    }
-                                    return Colors.white70;
-                                  }),
-                                  trackColor: MaterialStateProperty.resolveWith<Color?>((states) {
-                                    if (states.contains(MaterialState.selected)) {
-                                      return const Color.fromRGBO(0, 150, 136, 0.7);
-                                    }
-                                    return const Color.fromRGBO(255, 255, 255, 0.18);
-                                  }),
                                 ),
                               ),
-                              if (_error != null) ...[
+                              if (_error != null) ...<Widget>[
                                 const SizedBox(height: 10),
                                 Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
                               ],
