@@ -243,11 +243,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   Map<String, List<Task>> _groupTasksByDate(List<Task> tasks) {
     final byDay = SplayTreeMap<String, List<Task>>((a, b) => b.compareTo(a));
-    String _ymd(DateTime d) => _formatYmd(d);
+    String ymd(DateTime d) => _formatYmd(d);
 
     for (final t in tasks) {
       final when = (t.completedAtUtc ?? t.createdAtUtc).toLocal();
-      final key = _ymd(when);
+      final key = ymd(when);
       byDay.putIfAbsent(key, () => <Task>[]).add(t);
     }
     return byDay;

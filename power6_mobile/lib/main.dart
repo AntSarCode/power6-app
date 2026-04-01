@@ -1,3 +1,5 @@
+// ignore_for_file: use_super_parameters
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -44,7 +46,7 @@ class Power6App extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Power6',
-        theme: buildDarkTheme(), // corrected reference
+        theme: buildDarkTheme(),
         darkTheme: buildDarkTheme(),
         themeMode: ThemeMode.dark,
         debugShowCheckedModeBanner: false,
