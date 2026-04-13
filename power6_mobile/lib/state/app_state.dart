@@ -1,3 +1,5 @@
+// app_state.dart
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -64,19 +66,49 @@ class AppState extends ChangeNotifier {
     return List.unmodifiable(items);
   }
 
+  List<Task> get todayCreatedTasks => List.unmodifiable(todayTasks);
+
   List<Task> get todayActiveTasks =>
       List.unmodifiable(todayTasks.where((t) => !t.completed).toList());
 
   List<Task> get todayCompletedTasks =>
       List.unmodifiable(todayTasks.where((t) => t.completed).toList());
 
+  List<Task> get reviewTasks {
+    final items = _tasks.where((t) {
+      if (!t.completed) return true;
+      return _taskLocalDayKey(t) == _todayKey;
+    }).toList()
+      ..sort((a, b) {
+        final aOpen = !a.completed;
+        final bOpen = !b.completed;
+        if (aOpen != bOpen) return aOpen ? -1 : 1;
+
+        final aKey = _taskLocalDayKey(a);
+        final bKey = _taskLocalDayKey(b);
+        if (aKey != bKey) return aKey.compareTo(bKey);
+
+        return a.createdAtUtc.compareTo(b.createdAtUtc);
+      });
+    return List.unmodifiable(items);
+  }
+
+  List<Task> get openReviewTasks =>
+      List.unmodifiable(reviewTasks.where((t) => !t.completed).toList());
+
+  List<Task> get completedReviewTasks =>
+      List.unmodifiable(reviewTasks.where((t) => t.completed).toList());
+
   List<Task> get todayCompletedStreakTasks => List.unmodifiable(
         todayTasks.where((t) => t.completed && t.streakBound).toList(),
       );
 
   int get todayTaskCount => todayTasks.length;
+  int get todayCreatedCount => todayCreatedTasks.length;
   int get todayActiveCount => todayActiveTasks.length;
   int get todayCompletedCount => todayCompletedTasks.length;
+  int get reviewTaskCount => reviewTasks.length;
+  int get openReviewTaskCount => openReviewTasks.length;
   int get completedCountToday => todayCompletedStreakTasks.length;
   bool get todayEarnedStreak => completedCountToday >= kStreakThreshold;
   bool get todayCompleted => todayCompletedCount > 0;

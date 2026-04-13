@@ -84,18 +84,24 @@ def _to_task_read(task: TaskModel) -> TaskRead:
     )
 
 
-def _check_active_limit(db: Session, uid: int) -> None:
+def _check_daily_new_task_limit(db: Session, uid: int) -> None:
+    day_start, day_end = _utc_day_bounds()
+
     count = (
         db.query(TaskModel)
-        .filter(TaskModel.user_id == uid, TaskModel.completed.is_(False))
+        .filter(
+            TaskModel.user_id == uid,
+            TaskModel.created_at >= day_start,
+            TaskModel.created_at <= day_end,
+        )
         .count()
     )
+
     if count >= 6:
         raise HTTPException(
             status_code=400,
-            detail="Active task limit reached (6). Complete or remove one to add a new task.",
+            detail="Daily new task limit reached (6). You can add more tasks tomorrow.",
         )
-
 
 def _get_owned_task(db: Session, uid: int, task_id: int) -> TaskModel:
     task: Optional[TaskModel] = (
@@ -260,7 +266,7 @@ def create_task(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    _check_active_limit(db, uid)
+    _check_daily_new_task_limit(db, uid)
 
     completed_at = task.completed_at
     if task.completed and completed_at is None:

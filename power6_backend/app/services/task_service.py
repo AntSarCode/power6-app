@@ -50,16 +50,25 @@ def to_task_read(task: TaskModel) -> TaskRead:
     )
 
 
-def check_active_limit(db: Session, uid: int, limit: int = 6) -> None:
-    active_count = (
+def check_daily_new_task_limit(db: Session, uid: int, limit: int = 6) -> None:
+    today = now_utc().date()
+    start_dt = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+    end_dt = datetime.combine(today, datetime.max.time(), tzinfo=timezone.utc)
+
+    created_today_count = (
         db.query(TaskModel)
-        .filter(TaskModel.user_id == uid, TaskModel.completed.is_(False))
+        .filter(
+            TaskModel.user_id == uid,
+            TaskModel.created_at >= start_dt,
+            TaskModel.created_at <= end_dt,
+        )
         .count()
     )
-    if active_count >= limit:
+
+    if created_today_count >= limit:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Active task limit reached ({limit}). Complete or remove one to add a new task.",
+            detail=f"Daily new task limit reached ({limit}). You can add more tasks tomorrow.",
         )
 
 
@@ -67,7 +76,7 @@ def check_active_limit(db: Session, uid: int, limit: int = 6) -> None:
 # Service API
 # ----------------------------
 def create_task(db: Session, user_id: int, payload: TaskCreate) -> TaskRead:
-    check_active_limit(db, user_id)
+    check_daily_new_task_limit(db, user_id)
 
     db_task = TaskModel(
         title=payload.title,
