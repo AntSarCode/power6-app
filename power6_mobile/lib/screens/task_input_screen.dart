@@ -1,3 +1,5 @@
+// task_input_screen.dart
+
 // ignore_for_file: deprecated_member_use
 
 import 'dart:convert';
@@ -183,7 +185,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Keep it simple: up to six tasks. Prioritize, toggle streak binding, and save.',
+                                'You can create up to six new tasks per calendar day. Incomplete tasks stay in review until you finish them.',
                                 style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                               ),
                               const SizedBox(height: 16),

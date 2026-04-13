@@ -1,3 +1,6 @@
+// task_review_screen.dart
+
+
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
@@ -97,10 +100,10 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    final todayTasks = app.todayTasks;
-    final completedToday = app.todayCompletedTasks;
-    final progressTotal = todayTasks.length;
-    final progressDone = completedToday.length;
+    final reviewTasks = app.reviewTasks;
+    final completedReview = app.completedReviewTasks;
+    final progressTotal = app.todayCreatedCount;
+    final progressDone = app.todayCompletedCount;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -182,7 +185,7 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> with SingleTickerPr
                               const Icon(Icons.fact_check, color: Colors.tealAccent),
                               const SizedBox(width: 8),
                               Text(
-                                "Today's Progress",
+                                "Today's New Tasks Progress",
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                               ),
                               const Spacer(),
@@ -208,21 +211,37 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> with SingleTickerPr
                   FadeTransition(
                     opacity: _fadeIn,
                     child: _GlassPanel(
-                      child: todayTasks.isEmpty
+                      child: reviewTasks.isEmpty
                           ? const Padding(
                               padding: EdgeInsets.all(20.0),
-                              child: Text('No tasks available for review today.', style: TextStyle(color: Colors.white70)),
+                              child: Text('No tasks are currently waiting in your review queue.', style: TextStyle(color: Colors.white70)),
                             )
                           : Column(
-                              children: todayTasks
-                                  .map(
-                                    (t) => _TaskTile(
-                                      key: ValueKey<int>(t.id),
-                                      task: t,
-                                      onToggle: _saving ? null : (value) => _toggleComplete(t.id, value),
-                                    ),
-                                  )
-                                  .toList(),
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                  child: Row(
+                                    children: <Widget>[
+                                      const Icon(Icons.playlist_add_check_circle_outlined, color: Colors.tealAccent),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Open Review Queue',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                      Text('${app.openReviewTaskCount} open', style: const TextStyle(color: Colors.white70)),
+                                    ],
+                                  ),
+                                ),
+                                ...reviewTasks.map(
+                                  (t) => _TaskTile(
+                                    key: ValueKey<int>(t.id),
+                                    task: t,
+                                    onToggle: _saving ? null : (value) => _toggleComplete(t.id, value),
+                                  ),
+                                ),
+                              ],
                             ),
                     ),
                   ),
@@ -230,11 +249,11 @@ class _TaskReviewScreenState extends State<TaskReviewScreen> with SingleTickerPr
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
-                      onPressed: _saving || completedToday.isEmpty ? null : () => _submitReview(completedToday),
+                      onPressed: _saving || completedReview.isEmpty ? null : () => _submitReview(completedReview),
                       icon: _saving
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.save_outlined),
-                      label: Text(_saving ? 'Saving…' : 'Save Review (${completedToday.length})'),
+                      label: Text(_saving ? 'Saving…' : 'Save Review (${completedReview.length})'),
                     ),
                   ),
                 ],
@@ -347,3 +366,4 @@ class _GlassPanel extends StatelessWidget {
     );
   }
 }
+
