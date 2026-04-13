@@ -38,13 +38,13 @@ class _PowerMainNavState extends State<PowerMainNav> {
   void initState() {
     super.initState();
     _screens = [
-      HomeScreen(),
-      input.TaskInputScreen(),
-      review.TaskReviewScreen(),
-      TimelineScreen(),
-      StreakScreen(),
-      SubscriptionScreen(),
-      PowerBadgeScreen(), // Badges tab
+      const HomeScreen(),
+      const input.TaskInputScreen(),
+      const review.TaskReviewScreen(),
+      const TimelineScreen(),
+      const StreakScreen(),
+      const SubscriptionScreen(),
+      const PowerBadgeScreen(), // Badges tab
     ];
   }
 

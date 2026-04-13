@@ -88,6 +88,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pushReplacementNamed('/home');
+          },
+        ),
         title: const Text('Upgrade Your Plan'),
         backgroundColor: Colors.transparent,
         elevation: 0,

@@ -210,7 +210,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   if (appState.todayEarnedStreak) const SizedBox(height: 16),
-                  _GlassPanel(
+                  const _GlassPanel(
                     child: _AboutSection(version: _appVersion),
                   ),
                   const SizedBox(height: 16),
