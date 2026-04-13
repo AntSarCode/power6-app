@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, List, Optional, cast
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import Date, and_, or_, cast as sa_cast
@@ -98,14 +98,14 @@ def _check_active_limit(db: Session, uid: int) -> None:
 
 
 def _get_owned_task(db: Session, uid: int, task_id: int) -> TaskModel:
-    task = (
+    task: Optional[TaskModel] = (
         db.query(TaskModel)
         .filter(TaskModel.id == task_id, TaskModel.user_id == uid)
         .first()
     )
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    return cast(TaskModel, task)
+    return task
 
 
 def _apply_task_update(task: TaskModel, payload_data: dict[str, Any]) -> None:
@@ -170,7 +170,7 @@ def list_tasks(
     col = getattr(TaskModel, field)
     q = q.order_by(col.desc() if desc else col.asc())
 
-    tasks = q.offset(offset).limit(limit).all()
+    tasks: List[Any] = q.offset(offset).limit(limit).all()
     return [_to_task_read(t) for t in tasks]
 
 
@@ -199,7 +199,7 @@ def get_active_tasks(
     uid = _coerce_user_id(current_user)
     day_start, day_end = _utc_day_bounds()
 
-    tasks = (
+    tasks: List[Any] = (
         db.query(TaskModel)
         .filter(
             TaskModel.user_id == uid,
@@ -235,7 +235,7 @@ def get_history(
     from_date = from_date or (today - timedelta(days=30))
     to_date = to_date or today
 
-    tasks = (
+    tasks: List[Any] = (
         db.query(TaskModel)
         .filter(
             TaskModel.user_id == uid,
@@ -266,7 +266,7 @@ def create_task(
     if task.completed and completed_at is None:
         completed_at = _now_utc()
 
-    db_task = TaskModel(
+    db_task: TaskModel = TaskModel(
         title=task.title,
         notes=task.notes,
         priority=_priority_to_db(task.priority),
