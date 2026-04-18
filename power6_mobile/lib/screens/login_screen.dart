@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import './signup_screen.dart';
@@ -92,10 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF0A0F12),
-                      const Color.fromRGBO(15, 31, 36, 0.95),
-                      const Color(0xFF0A0F12),
+                    colors: const [
+                      Color(0xFF0A0F12),
+                      Color.fromRGBO(15, 31, 36, 0.95),
+                      Color(0xFF0A0F12),
                     ],
                     stops: [0, value.clamp(0.2, 0.8), 1],
                   ),
@@ -203,65 +204,99 @@ class _LoginScreenState extends State<LoginScreen> {
                                   children: [
                                     Icon(Icons.verified_user, size: 16, color: Colors.teal.shade200),
                                     const SizedBox(width: 6),
-                                    Text('Secure login', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                                    Text(
+                                      'Secure login',
+                                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                                    ),
                                   ],
                                 ),
                                 TextButton(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Forgot password coming soon')),
-                                    );
-                                  },
+                                  onPressed: _loading ? null : () {},
                                   child: const Text('Forgot password?'),
-                                )
+                                ),
                               ],
                             ),
                             if (_error != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                _error!,
-                                style: const TextStyle(color: Colors.redAccent),
-                                textAlign: TextAlign.center,
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color.fromRGBO(244, 67, 54, 0.14),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color.fromRGBO(244, 67, 54, 0.35)),
+                                ),
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
                               ),
                             ],
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 18),
                             SizedBox(
-                              height: 48,
+                              height: 52,
                               child: ElevatedButton(
                                 onPressed: _loading ? null : _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  backgroundColor: const Color(0xFF0FB3A0),
+                                  foregroundColor: Colors.black,
+                                  disabledBackgroundColor: Colors.white24,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
                                 ),
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 250),
-                                  child: _loading
-                                      ? const SizedBox(
-                                          key: ValueKey('loading'),
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                        )
-                                      : const Text(
-                                          key: ValueKey('text'),
-                                          'Log In',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                ),
+                                child: _loading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Text(
+                                        'Log In',
+                                        style: TextStyle(fontWeight: FontWeight.w700),
+                                      ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 14),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text("Don't have an account? ", style: TextStyle(color: Colors.white70)),
+                                Text(
+                                  "Don't have an account? ",
+                                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                                ),
                                 TextButton(
-                                  onPressed: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                                  ),
+                                  onPressed: _loading
+                                      ? null
+                                      : () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                                          ),
                                   child: const Text('Sign up'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                TextButton(
+                                  onPressed: () => launchUrl(Uri.parse('https://power6.app/terms')),
+                                  child: const Text(
+                                    'Terms of Use',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text('•', style: TextStyle(color: Colors.white54)),
+                                ),
+                                TextButton(
+                                  onPressed: () => launchUrl(Uri.parse('https://power6.app/privacy')),
+                                  child: const Text(
+                                    'Privacy Policy',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
                                 ),
                               ],
                             ),
@@ -290,11 +325,11 @@ class _LoginScreenState extends State<LoginScreen> {
       hintStyle: const TextStyle(color: Colors.white54),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+        borderSide: const BorderSide(color: Color.fromRGBO(0, 150, 136, 0.25)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: const Color.fromRGBO(100, 255, 218, 0.9), width: 1.2),
+        borderSide: const BorderSide(color: Color.fromRGBO(100, 255, 218, 0.9), width: 1.2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -328,3 +363,4 @@ class _LabeledField extends StatelessWidget {
     );
   }
 }
+
