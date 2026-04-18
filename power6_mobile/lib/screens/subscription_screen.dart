@@ -49,28 +49,35 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         },
       );
 
-      if (response.isSuccess && response.data != null && response.data?['checkout_url'] != null) {
-        final String url = response.data?['checkout_url'] as String;
-        final uri = Uri.parse(url);
-        final ok = await canLaunchUrl(uri);
-        if (ok) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Checkout URL: $url')),
-          );
+      final data = response.data;
+      final dynamic rawUrl = data is Map<String, dynamic> ? data['checkout_url'] : null;
+
+      if (response.isSuccess && rawUrl is String && rawUrl.isNotEmpty) {
+        final uri = Uri.tryParse(rawUrl);
+        if (uri == null) {
+          throw Exception('Checkout URL could not be parsed.');
+        }
+
+        final launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+        if (!launched) {
+          throw Exception('Could not open Stripe checkout.');
         }
       } else {
         final msg = response.error ?? 'Failed to start checkout (unexpected response).';
-        setState(() => _error = msg);
+        if (mounted) {
+          setState(() => _error = msg);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg)),
         );
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      final msg = e.toString();
+      if (mounted) {
+        setState(() => _error = msg);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        SnackBar(content: Text('Error: $msg')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -319,3 +326,7 @@ class _PlanCard extends StatelessWidget {
     );
   }
 }
+
+
+
+
