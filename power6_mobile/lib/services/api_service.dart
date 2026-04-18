@@ -22,9 +22,9 @@ class ApiService {
   final String baseUrl;
   final http.Client _client;
 
-  ApiService(String baseUrl, dynamic client)
-      : baseUrl = ((baseUrl).trim()),
-        _client = client ?? http.Client() {
+  ApiService(String baseUrl, [dynamic client])
+      : baseUrl = (baseUrl).trim(),
+        _client = client is http.Client ? client : http.Client() {
     if (this.baseUrl.isEmpty) {
       throw StateError(
         'API base URL is missing. Provide --dart-define=API_BASE_URL or set a default in ApiConstants.',
@@ -219,3 +219,5 @@ class ApiService {
     _client.close();
   }
 }
+
+

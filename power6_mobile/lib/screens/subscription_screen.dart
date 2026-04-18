@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,54 +25,80 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   ) async {
     final app = context.read<AppState>();
     final token = app.accessToken ?? '';
-    final userId = app.user?.id.toString() ?? '';
+    final user = app.user;
+    final userId = user?.id?.toString() ?? '';
 
     if (userId.isEmpty) {
+      const msg = 'You must be logged in to upgrade.';
+      if (mounted) {
+        setState(() => _error = msg);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to upgrade.')),
+        const SnackBar(content: Text(msg)),
       );
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
-      final response = await ApiService(ApiConstants.baseUrl, token).post(
+      debugPrint('Stripe checkout start -> tier=$tier interval=$interval userId=$userId');
+
+      final api = ApiService(ApiConstants.baseUrl, token);
+      final payload = <String, dynamic>{
+        'user_id': userId,
+        'tier': tier,
+        'interval': interval,
+      };
+
+      debugPrint('Stripe request payload -> $payload');
+
+      final response = await api.post(
         '/stripe/create-checkout-session',
         token: token,
-        body: {
-          'user_id': userId,
-          'tier': tier,
-          'interval': interval,
-        },
+        body: payload,
       );
+
+      debugPrint('Stripe response success=${response.isSuccess} data=${response.data} error=${response.error}');
 
       final data = response.data;
       final dynamic rawUrl = data is Map<String, dynamic> ? data['checkout_url'] : null;
 
-      if (response.isSuccess && rawUrl is String && rawUrl.isNotEmpty) {
-        final uri = Uri.tryParse(rawUrl);
-        if (uri == null) {
-          throw Exception('Checkout URL could not be parsed.');
-        }
+      if (!response.isSuccess) {
+        final msg = response.error ?? 'Failed to start checkout.';
+        throw Exception(msg);
+      }
 
-        final launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      if (rawUrl is! String || rawUrl.isEmpty) {
+        throw Exception('Backend did not return a valid checkout_url.');
+      }
+
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null) {
+        throw Exception('Checkout URL could not be parsed: $rawUrl');
+      }
+
+      debugPrint('Stripe redirect url -> $rawUrl');
+
+      if (kIsWeb) {
+        final launched = await launchUrl(uri, webOnlyWindowName: '_self');
+        if (!launched) {
+          throw Exception('Could not redirect browser to Stripe checkout.');
+        }
+      } else {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!launched) {
           throw Exception('Could not open Stripe checkout.');
         }
-      } else {
-        final msg = response.error ?? 'Failed to start checkout (unexpected response).';
-        if (mounted) {
-          setState(() => _error = msg);
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Stripe checkout error -> $e');
+      debugPrintStack(stackTrace: st);
       final msg = e.toString();
       if (mounted) {
         setState(() => _error = msg);
@@ -80,7 +107,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         SnackBar(content: Text('Error: $msg')),
       );
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
