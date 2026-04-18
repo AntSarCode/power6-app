@@ -86,3 +86,22 @@ class Subscription(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Subscription id={self.id} tier={self.tier!r} active={self.active}>"
+
+
+class AdminMessage(Base):
+    __tablename__ = "admin_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String, nullable=False)
+    body = Column(String, nullable=False)
+
+    # sender is the authenticated user submitting feedback
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    sender = relationship("User")
+
+    is_read = Column(Boolean, nullable=False, server_default=text("false"))
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<AdminMessage id={self.id} subject={self.subject!r} sender_id={self.sender_id}>"

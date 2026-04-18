@@ -3,15 +3,33 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/api_constants.dart';
+import '../services/api_service.dart';
 import '../state/app_state.dart';
-import '../widgets/logout_pill.dart';
+import '../widgets/top_right_menu.dart';
 import '../widgets/task_card.dart';
+import '../widgets/feedback/modal.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   static const String _appVersion = '1.0';
   static const String _graphicsBase = 'assets/graphics';
+
+  Future<void> _submitFeedback(BuildContext context, FeedbackReportPayload payload) async {
+    final appState = context.read<AppState>();
+    final token = appState.accessToken ?? '';
+
+    final response = await ApiService(ApiConstants.baseUrl).post(
+      '/feedback',
+      token: token,
+      body: payload.toJson(),
+    );
+
+    if (!response.isSuccess) {
+      throw Exception(response.error ?? 'Failed to submit feedback.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +46,13 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leadingWidth: 56,
-        actions: const <Widget>[
+        actions: <Widget>[
           Padding(
-            padding: EdgeInsets.only(right: 12.0),
+            padding: const EdgeInsets.only(right: 12.0),
             child: Center(
-              child: LogoutPill.compact(),
+              child: Power6TopRightMenu(
+                onSubmitFeedback: (payload) => _submitFeedback(context, payload),
+              ),
             ),
           ),
         ],
@@ -487,3 +507,5 @@ class _Bullet extends StatelessWidget {
     );
   }
 }
+
+

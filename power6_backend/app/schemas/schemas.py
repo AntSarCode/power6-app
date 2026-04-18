@@ -64,6 +64,29 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class FeedbackCreate(BaseModel):
+    type: str
+    priority: int = 1
+    subject: str
+    details: str
+    contact_email: Optional[EmailStr] = None
+    include_device_context: bool = True
+    created_at_utc: datetime = Field(default_factory=_now_utc)
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def _coerce_priority(cls, v):
+        return _priority_to_int(v, default=1)
+
+
+class FeedbackRead(FeedbackCreate):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class TaskBase(BaseModel):
     title: str
     notes: Optional[str] = None
@@ -116,3 +139,5 @@ class TaskRead(TaskBase):
     day_key: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
