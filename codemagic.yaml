@@ -5,10 +5,31 @@ workflows:
     environment:
       flutter: 3.41.7
     scripts:
+      - name: Show Flutter version
+        script: |
+          flutter --version
+
+      - name: Inspect Android files
+        script: |
+          cd power6_mobile
+          pwd
+          find android -maxdepth 4 -type f | sort
+          echo "---- settings.gradle.kts ----"
+          cat android/settings.gradle.kts
+          echo "---- build.gradle.kts ----"
+          cat android/build.gradle.kts
+          echo "---- app/build.gradle.kts ----"
+          cat android/app/build.gradle.kts
+          echo "---- gradle-wrapper.properties ----"
+          cat android/gradle/wrapper/gradle-wrapper.properties || true
+          echo "---- grep legacy patterns ----"
+          grep -Rni "apply from:\\|apply plugin:\\|app_plugin_loader.gradle\\|flutter.gradle" android || true
+
       - name: Get Flutter packages
         script: |
           cd power6_mobile
           flutter pub get
+
       - name: Build APK
         script: |
           cd power6_mobile
