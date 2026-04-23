@@ -3,7 +3,7 @@ workflows:
     name: Android Workflow
     instance_type: mac_mini_m2
     environment:
-      flutter: stable
+      flutter: 3.41.7
     scripts:
       - name: Set working directory
         script: cd power6_mobile
