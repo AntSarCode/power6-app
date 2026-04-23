@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import './signup_screen.dart';
+import 'signup_screen.dart';
 import '../state/app_state.dart';
 import '../models/user.dart';
 

@@ -1,6 +1,6 @@
 {
-    "name": "power6_mobile",
-    "short_name": "power6_mobile",
+    "name": "power6_mobile_fresh",
+    "short_name": "power6_mobile_fresh",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

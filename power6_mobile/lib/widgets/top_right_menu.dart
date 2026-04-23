@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../widgets/feedback/modal.dart';
+import 'feedback/modal.dart';
 import '../services/auth_service.dart';
 import '../state/app_state.dart';
 
