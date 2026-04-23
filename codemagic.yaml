@@ -12,6 +12,8 @@ workflows:
       - name: Build APK
         script: |
           cd power6_mobile
+          flutter clean
+          flutter pub get
           flutter build apk --release
     artifacts:
       - power6_mobile/build/**/outputs/**/*.apk
