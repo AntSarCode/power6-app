@@ -5,8 +5,6 @@ workflows:
     environment:
       flutter: 3.41.7
     scripts:
-      - name: Set working directory
-        script: cd power6_mobile
       - name: Get Flutter packages
         script: |
           cd power6_mobile
