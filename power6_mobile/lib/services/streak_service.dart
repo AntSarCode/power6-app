@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_constants.dart';
-import '../services/api_response.dart';
+import 'api_response.dart';
 
 class StreakService {
   final http.Client client;
