@@ -1,0 +1,19 @@
+workflows:
+  android-workflow:
+    name: Android Workflow
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+    scripts:
+      - name: Set working directory
+        script: cd power6_mobile
+      - name: Get Flutter packages
+        script: |
+          cd power6_mobile
+          flutter pub get
+      - name: Build APK
+        script: |
+          cd power6_mobile
+          flutter build apk --release
+    artifacts:
+      - power6_mobile/build/**/outputs/**/*.apk
