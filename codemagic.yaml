@@ -38,3 +38,43 @@ workflows:
           flutter build apk --release
     artifacts:
       - power6_mobile/build/**/outputs/**/*.apk
+
+  ios-workflow:
+    name: iOS Workflow
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.41.7
+      xcode: latest
+    scripts:
+      - name: Show Flutter version
+        script: |
+          flutter --version
+
+      - name: Inspect iOS files
+        script: |
+          cd power6_mobile
+          pwd
+          find ios -maxdepth 4 -type f | sort
+          echo "---- Info.plist ----"
+          cat ios/Runner/Info.plist || true
+          echo "---- Podfile ----"
+          cat ios/Podfile || true
+
+      - name: Get Flutter packages
+        script: |
+          cd power6_mobile
+          flutter pub get
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd power6_mobile/ios
+          pod install
+
+      - name: Build iOS unsigned
+        script: |
+          cd power6_mobile
+          flutter clean
+          flutter pub get
+          flutter build ios --release --no-codesign
+    artifacts:
+      - power6_mobile/build/ios/iphoneos/Runner.app
