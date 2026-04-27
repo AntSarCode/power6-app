@@ -23,7 +23,7 @@ workflows:
           echo "---- gradle-wrapper.properties ----"
           cat android/gradle/wrapper/gradle-wrapper.properties || true
           echo "---- grep legacy patterns ----"
-          grep -Rni "apply from:\\|apply plugin:\\|app_plugin_loader.gradle\\|flutter.gradle" android || true
+          grep -Rni "apply from:\|apply plugin:\|app_plugin_loader.gradle\|flutter.gradle" android || true
 
       - name: Get Flutter packages
         script: |
@@ -60,6 +60,13 @@ workflows:
           echo "---- Podfile ----"
           cat ios/Podfile || true
 
+      - name: Clean stale iOS Flutter config
+        script: |
+          cd power6_mobile
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          flutter clean
+
       - name: Get Flutter packages
         script: |
           cd power6_mobile
@@ -68,13 +75,11 @@ workflows:
       - name: Install CocoaPods dependencies
         script: |
           cd power6_mobile/ios
-          pod install
+          pod install --repo-update
 
       - name: Build iOS unsigned
         script: |
           cd power6_mobile
-          flutter clean
-          flutter pub get
           flutter build ios --release --no-codesign
     artifacts:
       - power6_mobile/build/ios/iphoneos/Runner.app
