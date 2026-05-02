@@ -83,6 +83,13 @@ workflows:
           cd power6_mobile/ios
           pod install --repo-update
 
+      - name: Force iOS bundle identifier to match provisioning profile
+        script: |
+          cd power6_mobile
+          echo "Setting iOS bundle identifier to $BUNDLE_ID"
+          sed -i '' "s/com.example.power6Mobile/$BUNDLE_ID/g" ios/Runner.xcodeproj/project.pbxproj
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER" ios/Runner.xcodeproj/project.pbxproj
+
       - name: Set up code signing settings on Xcode project
         script: |
           cd power6_mobile
@@ -91,7 +98,7 @@ workflows:
       - name: Build iOS (App Store signed IPA)
         script: |
           cd power6_mobile
-          flutter build ipa --release
+          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - power6_mobile/build/ios/ipa/*.ipa
