@@ -107,7 +107,7 @@ workflows:
           if 'DEVELOPMENT_TEAM = 97VTHZP969;' not in s:
               s = s.replace(
                   'PRODUCT_BUNDLE_IDENTIFIER = com.power6.app;',
-                  'DEVELOPMENT_TEAM = 97VTHZP969;\\n\\t\\t\\t\\tPRODUCT_BUNDLE_IDENTIFIER = com.power6.app;'
+                  'DEVELOPMENT_TEAM = 97VTHZP969;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.power6.app;'
               )
           p.write_text(s)
           PY
@@ -122,6 +122,25 @@ workflows:
         script: |
           cd power6_mobile
           xcode-project use-profiles --project ios/Runner.xcodeproj
+          cat > /Users/builder/export_options.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>97VTHZP969</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.power6.app</key>
+              <string>power6_app_profile</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
           echo "---- export options ----"
           cat /Users/builder/export_options.plist || true
           echo "---- available signing identities ----"
