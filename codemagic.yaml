@@ -41,6 +41,8 @@ workflows:
 
   ios-workflow:
     name: iOS Workflow
+    integrations:
+      app_store_connect: power6_key
     instance_type: mac_mini_m2
     environment:
       groups:
@@ -161,9 +163,7 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
