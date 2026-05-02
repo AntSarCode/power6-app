@@ -47,6 +47,9 @@ workflows:
       xcode: latest
       vars:
         BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
+        DEVELOPMENT_TEAM: "97VTHZP969"
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
       ios_signing:
         provisioning_profiles:
           - power6_app_profile
@@ -85,22 +88,49 @@ workflows:
           cd power6_mobile/ios
           pod install --repo-update
 
-      - name: Force iOS bundle identifier to match provisioning profile
+      - name: Force iOS signing settings to match provisioning profile
         script: |
           cd power6_mobile
           echo "Setting iOS bundle identifier to $BUNDLE_ID"
-          sed -i '' "s/com.example.power6Mobile/$BUNDLE_ID/g" ios/Runner.xcodeproj/project.pbxproj
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" ios/Runner/Info.plist || true
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('ios/Runner.xcodeproj/project.pbxproj')
+          s = p.read_text()
+          import re
+          s = re.sub(r'PRODUCT_BUNDLE_IDENTIFIER = [^;]+;', 'PRODUCT_BUNDLE_IDENTIFIER = com.power6.app;', s)
+          s = re.sub(r'DEVELOPMENT_TEAM = [^;]+;', 'DEVELOPMENT_TEAM = 97VTHZP969;', s)
+          s = re.sub(r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;', s)
+          s = re.sub(r'CODE_SIGN_STYLE = Manual;', 'CODE_SIGN_STYLE = Manual;', s)
+          if 'DEVELOPMENT_TEAM = 97VTHZP969;' not in s:
+              s = s.replace('PRODUCT_BUNDLE_IDENTIFIER = com.power6.app;', 'DEVELOPMENT_TEAM = 97VTHZP969;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.power6.app;')
+          p.write_text(s)
+          PY
+          echo "---- bundle identifiers ----"
           grep -n "PRODUCT_BUNDLE_IDENTIFIER" ios/Runner.xcodeproj/project.pbxproj
+          echo "---- development team ----"
+          grep -n "DEVELOPMENT_TEAM" ios/Runner.xcodeproj/project.pbxproj || true
+          echo "---- code sign style ----"
+          grep -n "CODE_SIGN_STYLE" ios/Runner.xcodeproj/project.pbxproj || true
 
       - name: Set up code signing settings on Xcode project
         script: |
           cd power6_mobile
-          xcode-project use-profiles
+          xcode-project use-profiles --project ios/Runner.xcodeproj
+          echo "---- export options ----"
+          cat /Users/builder/export_options.plist || true
+          echo "---- available signing identities ----"
+          security find-identity -v -p codesigning || true
+          echo "---- installed provisioning profiles ----"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles || true
 
       - name: Build iOS (App Store signed IPA)
         script: |
           cd power6_mobile
-          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/power6_mobile/ios/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
+            --archive-flags="-destination 'generic/platform=iOS'"
 
     artifacts:
       - power6_mobile/build/ios/ipa/*.ipa
@@ -113,3 +143,4 @@ workflows:
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
+
