@@ -47,10 +47,9 @@ workflows:
       xcode: latest
       vars:
         BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
-
-    ios_signing:
-      distribution_type: app_store
-      bundle_identifier: $BUNDLE_ID
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: $BUNDLE_ID
 
     scripts:
       - name: Show Flutter version
@@ -83,6 +82,11 @@ workflows:
         script: |
           cd power6_mobile/ios
           pod install --repo-update
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          cd power6_mobile
+          xcode-project use-profiles
 
       - name: Build iOS (App Store signed IPA)
         script: |
