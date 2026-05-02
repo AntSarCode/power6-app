@@ -45,6 +45,13 @@ workflows:
     environment:
       flutter: 3.41.7
       xcode: latest
+      vars:
+        BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
+
+    ios_signing:
+      distribution_type: app_store
+      bundle_identifier: $BUNDLE_ID
+
     scripts:
       - name: Show Flutter version
         script: |
@@ -77,9 +84,19 @@ workflows:
           cd power6_mobile/ios
           pod install --repo-update
 
-      - name: Build iOS unsigned
+      - name: Build iOS (App Store signed IPA)
         script: |
           cd power6_mobile
-          flutter build ios --release --no-codesign
+          flutter build ipa --release
+
     artifacts:
-      - power6_mobile/build/ios/iphoneos/Runner.app
+      - power6_mobile/build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        api_key: $CM_APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $CM_APP_STORE_CONNECT_KEY_ID
+        issuer_id: $CM_APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
