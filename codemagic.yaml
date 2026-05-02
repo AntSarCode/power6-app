@@ -43,6 +43,8 @@ workflows:
     name: iOS Workflow
     instance_type: mac_mini_m2
     environment:
+      groups:
+        - app_store_credentials
       flutter: 3.41.7
       xcode: latest
       vars:
@@ -103,7 +105,10 @@ workflows:
           s = re.sub(r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;', s)
           s = re.sub(r'CODE_SIGN_STYLE = Manual;', 'CODE_SIGN_STYLE = Manual;', s)
           if 'DEVELOPMENT_TEAM = 97VTHZP969;' not in s:
-              s = s.replace('PRODUCT_BUNDLE_IDENTIFIER = com.power6.app;', 'DEVELOPMENT_TEAM = 97VTHZP969;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.power6.app;')
+              s = s.replace(
+                  'PRODUCT_BUNDLE_IDENTIFIER = com.power6.app;',
+                  'DEVELOPMENT_TEAM = 97VTHZP969;\\n\\t\\t\\t\\tPRODUCT_BUNDLE_IDENTIFIER = com.power6.app;'
+              )
           p.write_text(s)
           PY
           echo "---- bundle identifiers ----"
@@ -137,9 +142,9 @@ workflows:
 
     publishing:
       app_store_connect:
-        api_key: $CM_APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $CM_APP_STORE_CONNECT_KEY_ID
-        issuer_id: $CM_APP_STORE_CONNECT_ISSUER_ID
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
         beta_groups:
           - Internal Testers
