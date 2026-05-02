@@ -48,8 +48,10 @@ workflows:
       vars:
         BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: $BUNDLE_ID
+        provisioning_profiles:
+          - power6_app_store_profile
+        certificates:
+          - power6_certificate
 
     scripts:
       - name: Show Flutter version
