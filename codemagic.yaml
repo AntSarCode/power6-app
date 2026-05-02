@@ -49,7 +49,7 @@ workflows:
         BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
       ios_signing:
         provisioning_profiles:
-          - power6_app_store_profile
+          - power6_app_profile
         certificates:
           - power6_certificate
 
