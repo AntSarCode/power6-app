@@ -41,8 +41,12 @@ class HomeScreen extends StatelessWidget {
     final totalToday = appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        extendBodyBehindAppBar: true,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leadingWidth: 56,
@@ -289,6 +293,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

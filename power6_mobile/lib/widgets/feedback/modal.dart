@@ -89,11 +89,18 @@ class _FeedbackReportDialogState extends State<FeedbackReportDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Dialog(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       backgroundColor: const Color(0xFF0E171A),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: ConstrainedBox(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -185,6 +192,8 @@ class _FeedbackReportDialogState extends State<FeedbackReportDialog> {
                   TextFormField(
                     controller: _subjectController,
                     enabled: !_submitting,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                     style: const TextStyle(color: Colors.white),
                     decoration: _inputDecoration('Subject'),
                     validator: (value) {
@@ -200,6 +209,7 @@ class _FeedbackReportDialogState extends State<FeedbackReportDialog> {
                     enabled: !_submitting,
                     minLines: 5,
                     maxLines: 8,
+                    textInputAction: TextInputAction.newline,
                     style: const TextStyle(color: Colors.white),
                     decoration: _inputDecoration('Describe the issue or feedback'),
                     validator: (value) {
@@ -214,6 +224,8 @@ class _FeedbackReportDialogState extends State<FeedbackReportDialog> {
                     controller: _emailController,
                     enabled: !_submitting,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
                     style: const TextStyle(color: Colors.white),
                     decoration: _inputDecoration('Contact email (optional)'),
                   ),
@@ -292,7 +304,9 @@ class _FeedbackReportDialogState extends State<FeedbackReportDialog> {
             ),
           ),
         ),
+        ),
       ),
+      )
     );
   }
 
@@ -371,5 +385,7 @@ class FeedbackReportPayload {
     };
   }
 }
+
+
 
 
