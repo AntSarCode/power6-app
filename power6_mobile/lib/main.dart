@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:power6_mobile/ui/theme.dart';
 import 'package:power6_mobile/state/app_state.dart';
 import 'package:power6_mobile/state/backend_adapter_api.dart';
+import 'package:power6_mobile/config/api_constants.dart';
 
 // Screens
 import 'package:power6_mobile/screens/login_screen.dart';
@@ -38,7 +39,9 @@ class Power6App extends StatelessWidget {
       providers: [
         ChangeNotifierProvider<AppState>(
           create: (_) => AppState(
-            apiBaseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: ''),
+            // Centralized backend URL resolution via /lib/config/api_constants.dart,
+            // which reads /lib/env.dart and falls back to production Render URL.
+            apiBaseUrl: ApiConstants.baseUrl,
             backend: ApiBackendAdapter(),
           ),
         ),
@@ -102,3 +105,6 @@ class _RootGateState extends State<_RootGate> {
     );
   }
 }
+
+
+
