@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
+import '../config/api_constants.dart';
+
 
 class ApiResponse {
   final bool isSuccess;
@@ -172,7 +174,7 @@ class ApiService {
     final DateTime toDate = (to ?? nowUtc).toUtc();
 
     return get(
-      "/tasks/history",
+      ApiConstants.taskHistory,
       token: token,
       query: {
         "from_date": _ymd(fromDate),

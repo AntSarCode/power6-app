@@ -59,7 +59,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       debugPrint('Stripe request payload -> $payload');
 
       final response = await api.post(
-        '/stripe/create-checkout-session',
+        ApiConstants.stripeCheckout,
         token: token,
         body: payload,
       );

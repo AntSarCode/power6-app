@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import '../models/task.dart';
 import '../state/app_state.dart';
+import '../config/api_constants.dart';
 
 class TaskInputScreen extends StatefulWidget {
   const TaskInputScreen({super.key});
@@ -95,7 +96,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
     if (base.isEmpty) {
       throw Exception('Missing API base URL');
     }
-    final uri = Uri.parse('$base/tasks');
+    final uri = Uri.parse('$base${ApiConstants.tasks}');
     final res = await http.post(
       uri,
       headers: <String, String>{
