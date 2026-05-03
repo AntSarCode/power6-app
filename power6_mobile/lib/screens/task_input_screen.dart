@@ -120,8 +120,12 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Create a New Task'),
         backgroundColor: Colors.transparent,
@@ -159,6 +163,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) => SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight - 32, maxWidth: 800),
@@ -193,7 +198,10 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                               TextField(
                                 controller: _controller,
                                 style: const TextStyle(color: Colors.white),
+                                minLines: 1,
                                 maxLines: 3,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => FocusScope.of(context).unfocus(),
                                 decoration: _inputDecoration(hint: 'Enter your task', icon: Icons.edit_outlined),
                               ),
                               const SizedBox(height: 16),
@@ -275,6 +283,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -298,3 +307,5 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
     );
   }
 }
+
+
