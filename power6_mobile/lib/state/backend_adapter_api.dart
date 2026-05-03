@@ -12,7 +12,7 @@ class ApiBackendAdapter implements BackendAdapter {
   @override
   Future<List<Task>?> fetchactiveTasks(String token) async {
     final res = await _api.get(
-      ApiConstants.normalize('/tasks/active'),
+      ApiConstants.activeTasks,
       token: token,
     );
 

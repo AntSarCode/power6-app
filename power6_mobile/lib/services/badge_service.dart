@@ -4,10 +4,11 @@ import 'package:http/http.dart' as http;
 
 import '../models/badge.dart' as userbadge;
 import 'api_response.dart';
+import '../config/api_constants.dart';
 
 /// BadgeService: fetches badges from the backend and never throws.
 class BadgeService {
-  static const String _baseUrl = 'https://power6-backend.onrender.com';
+  static final String _baseUrl = ApiConstants.baseUrl;
   static const Duration _timeout = Duration(seconds: 15);
 
   /// Safe GET helper that accepts absolute or relative paths.
@@ -54,7 +55,7 @@ class BadgeService {
       return ApiResponse.success(<userbadge.Badge>[]); // don't hit network without auth
     }
 
-    final resp = await _get('/api/dashboard/badges', token: token);
+    final resp = await _get(ApiConstants.badgesMe, token: token);
     if (!resp.isSuccess) {
       return ApiResponse.failure(resp.error ?? 'Unable to load badges');
     }

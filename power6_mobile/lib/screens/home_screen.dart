@@ -21,7 +21,7 @@ class HomeScreen extends StatelessWidget {
     final token = appState.accessToken ?? '';
 
     final response = await ApiService(ApiConstants.baseUrl).post(
-      '/feedback',
+      ApiConstants.feedback,
       token: token,
       body: payload.toJson(),
     );
