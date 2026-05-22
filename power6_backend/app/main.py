@@ -92,6 +92,31 @@ def _bootstrap_migrations(db_engine) -> None:
             ensure("completed_at",  "timestamptz NULL")
             ensure("updated_at",    "timestamptz NULL")
 
+            if db_engine.dialect.name == "postgresql":
+                try:
+                    conn.execute(text("""
+                        DO $$
+                        DECLARE
+                            constraint_name text;
+                        BEGIN
+                            SELECT conname INTO constraint_name
+                            FROM pg_constraint
+                            WHERE conrelid = 'subscriptions'::regclass
+                              AND contype = 'f'
+                              AND pg_get_constraintdef(oid) LIKE '%REFERENCES users%';
+
+                            IF constraint_name IS NOT NULL THEN
+                                EXECUTE format('ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS %I', constraint_name);
+                            END IF;
+
+                            ALTER TABLE subscriptions
+                            ADD CONSTRAINT subscriptions_user_id_fkey
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+                        END $$;
+                    """))
+                except Exception as _e:
+                    print("bootstrap: skip subscriptions FK cascade:", _e)
+
     except SQLAlchemyError as e:  # pragma: no cover
         print("⚠️  Skipped bootstrap migration:", e)
 

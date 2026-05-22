@@ -9,6 +9,7 @@ def include_all_routes():
     from .tier_logic import router as tier_logic_router
     from .users import router as users_router
     from .streak import router as streak_router
+    from .iap import router as iap_router
     # from .users import router as users_router
 
     api_router.include_router(auth_router)
@@ -17,6 +18,7 @@ def include_all_routes():
     api_router.include_router(tier_logic_router)
     api_router.include_router(users_router)
     api_router.include_router(streak_router)
+    api_router.include_router(iap_router)
     # api_router.include_router(users_router)
 
 include_all_routes()

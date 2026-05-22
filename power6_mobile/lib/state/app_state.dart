@@ -22,7 +22,9 @@ class _NoopBackendAdapter implements BackendAdapter {
   Future<List<Task>?> fetchactiveTasks(String token) async => null;
 
   @override
-  Future<bool> updateTaskStatus(String token, String taskId, bool completed) async => true;
+  Future<bool> updateTaskStatus(
+          String token, String taskId, bool completed) async =>
+      true;
 
   @override
   Future<int?> getCurrentStreak(String token) async => null;
@@ -112,8 +114,9 @@ class AppState extends ChangeNotifier {
   int get completedCountToday => todayCompletedStreakTasks.length;
   bool get todayEarnedStreak => completedCountToday >= kStreakThreshold;
   bool get todayCompleted => todayCompletedCount > 0;
-  double get todayProgressPercent =>
-      todayTaskCount == 0 ? 0 : (todayCompletedCount / todayTaskCount).clamp(0, 1).toDouble();
+  double get todayProgressPercent => todayTaskCount == 0
+      ? 0
+      : (todayCompletedCount / todayTaskCount).clamp(0, 1).toDouble();
 
   Future<void> setAuthToken(String token, {User? user}) async {
     _authToken = token;
@@ -121,6 +124,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     await syncTasks();
     await loadStreak();
+  }
+
+  void setUser(User user) {
+    _user = user;
+    notifyListeners();
   }
 
   Future<void> logout() async {
@@ -233,7 +241,8 @@ class AppState extends ChangeNotifier {
     for (final local in _tasks) {
       final keepLocalCompleted = local.completed && _isToday(local);
       final keepReviewedTask = local.reviewedAtUtc != null && _isToday(local);
-      if ((keepLocalCompleted || keepReviewedTask) && !merged.containsKey(local.id)) {
+      if ((keepLocalCompleted || keepReviewedTask) &&
+          !merged.containsKey(local.id)) {
         merged[local.id] = local;
       }
     }
@@ -306,7 +315,8 @@ class AppState extends ChangeNotifier {
   }
 }
 
-DateTime _truncateToLocalDay(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+DateTime _truncateToLocalDay(DateTime dt) =>
+    DateTime(dt.year, dt.month, dt.day);
 
 String _yyyyMmDd(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

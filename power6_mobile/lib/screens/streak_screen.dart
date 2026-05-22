@@ -92,7 +92,8 @@ class _StreakScreenState extends State<StreakScreen> {
                 child: ClipOval(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                    child: Container(color: const Color.fromRGBO(15, 179, 160, 0.32)),
+                    child: Container(
+                        color: const Color.fromRGBO(15, 179, 160, 0.32)),
                   ),
                 ),
               ),
@@ -107,17 +108,23 @@ class _StreakScreenState extends State<StreakScreen> {
                   }
 
                   if (snapshot.hasError) {
-                    final msg = snapshot.error?.toString().replaceFirst('Exception: ', '') ?? 'Failed to load streak';
+                    final msg = snapshot.error
+                            ?.toString()
+                            .replaceFirst('Exception: ', '') ??
+                        'Failed to load streak';
                     return ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: <Widget>[
                         const SizedBox(height: 100),
-                        Center(child: _ErrorPanel(message: msg, onRetry: _refresh)),
+                        Center(
+                            child:
+                                _ErrorPanel(message: msg, onRetry: _refresh)),
                       ],
                     );
                   }
 
-                  final data = snapshot.data ?? _snapshot(context.watch<AppState>());
+                  final data =
+                      snapshot.data ?? _snapshot(context.watch<AppState>());
                   return _StreakView(
                     streakCount: data.streakCount,
                     hasCompletedToday: data.hasCompletedToday,
@@ -133,7 +140,10 @@ class _StreakScreenState extends State<StreakScreen> {
       ),
       fallback: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: AppBar(title: const Text('🔥 Daily Streak'), backgroundColor: Colors.transparent, elevation: 0),
+        appBar: AppBar(
+            title: const Text('🔥 Daily Streak'),
+            backgroundColor: Colors.transparent,
+            elevation: 0),
         body: Stack(
           children: <Widget>[
             Container(
@@ -206,11 +216,15 @@ class _StreakView extends StatelessWidget {
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: <Widget>[
-                    Icon(Icons.local_fire_department_rounded, size: 64, color: accent),
+                    Icon(Icons.local_fire_department_rounded,
+                        size: 64, color: accent),
                     const SizedBox(height: 12),
                     Text(
                       '$streakCount day streak',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -234,7 +248,10 @@ class _StreakView extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       "Today's streak progress",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
                     ClipRRect(
@@ -332,33 +349,6 @@ class _ErrorPanel extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-  const _EmptyState({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.local_fire_department_outlined, size: 40, color: Colors.white70),
-          const SizedBox(height: 12),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh'),
-          ),
-        ],
       ),
     );
   }

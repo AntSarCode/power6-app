@@ -42,6 +42,13 @@ class Settings:
     ALLOWED_ORIGINS: Optional[str] = os.getenv("ALLOWED_ORIGINS", "*")
     DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
 
+    # --- Apple App Store Server API ---
+    APPLE_IAP_ISSUER_ID: Optional[str] = os.getenv("APPLE_IAP_ISSUER_ID")
+    APPLE_IAP_KEY_ID: Optional[str] = os.getenv("APPLE_IAP_KEY_ID")
+    APPLE_IAP_PRIVATE_KEY: Optional[str] = os.getenv("APPLE_IAP_PRIVATE_KEY")
+    APPLE_IAP_BUNDLE_ID: Optional[str] = os.getenv("APPLE_IAP_BUNDLE_ID")
+    APPLE_IAP_ENVIRONMENT: str = os.getenv("APPLE_IAP_ENVIRONMENT", "Production")
+
     @property
     def allowed_origins_list(self) -> List[str]:
         raw = self.ALLOWED_ORIGINS or "*"
