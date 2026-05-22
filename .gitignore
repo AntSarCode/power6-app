@@ -84,3 +84,15 @@ yarn-error.log
 # ------------------------------
 ehthumbs.db
 Icon?
+
+
+**/.dart_tool/
+**/build/
+.firebase/
+firebase-debug.log
+.env
+.env.*
+!.env.example
+*serviceAccount*.json
+*service-account*.json
+google-services-private.json
