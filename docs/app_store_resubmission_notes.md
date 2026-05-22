@@ -1,0 +1,69 @@
+# Power6 App Store Resubmission Notes
+
+## Review Notes Summary
+
+- Support URL: `https://power6.app/support`
+- Delete account path: Menu > Account settings > Delete Account
+- Review account:
+  - Username: `app_review_expired`
+  - Email: `app-review@power6.app`
+  - Password: `Power6Review!2026`
+  - State: expired/inactive subscription
+- IAP product IDs:
+  - `power6_plus_monthly`
+  - `power6_plus_yearly`
+  - `power6_pro_monthly`
+  - `power6_pro_yearly`
+  - `power6_elite_monthly`
+  - `power6_elite_yearly`
+- Reminder: IAP products must be submitted in App Store Connect with the binary.
+- Reminder: upload a physical-device screen recording of account deletion.
+- Reminder: upload real 13-inch iPad screenshots showing app usage.
+
+## Review Account
+
+Seed a free/expired review account from the backend directory:
+
+```bash
+python -m app.scripts.seed_review_account
+```
+
+Default credentials:
+
+- Username: app_review_expired
+- Email: app-review@power6.app
+- Password: Power6Review!2026
+- Subscription state: Free user tier with an inactive Expired subscription record
+
+Override these values with `POWER6_REVIEW_USERNAME`, `POWER6_REVIEW_EMAIL`, and `POWER6_REVIEW_PASSWORD` before running the script.
+
+## App Store Connect Checklist
+
+- Support URL: `https://power6.app/support`
+- Delete account path in app: Menu > Account settings > Delete Account
+- Account deletion screen recording: upload with review notes or describe the attached media location.
+- Create subscription products matching these product IDs:
+  - `power6_plus_monthly`
+  - `power6_plus_yearly`
+  - `power6_pro_monthly`
+  - `power6_pro_yearly`
+  - `power6_elite_monthly`
+  - `power6_elite_yearly`
+- Upload the required IAP review screenshot for each subscription group/product.
+- Submit the IAP products with the new binary so review can validate purchases.
+- Set the Support URL to `https://power6.app/support`.
+- Add the review account credentials above.
+- Upload 13-inch iPad screenshots showing login, dashboard/task usage, subscription screen, and account deletion.
+- Add review notes explaining that account deletion is available at Menu > Account settings > Delete Account.
+- Upload a new binary after the code changes are built.
+
+## Manual Checks Before Resubmission
+
+- [ ] Backend deployed with DELETE /users/me.
+- [ ] Review account seed script run against production DB.
+- [ ] https://power6.app/support opens publicly.
+- [ ] App Store Connect Support URL updated.
+- [ ] All IAP products created and submitted for review.
+- [ ] New 13-inch iPad screenshots uploaded.
+- [ ] Account deletion screen recording uploaded in review notes.
+- [ ] New binary uploaded after these changes.

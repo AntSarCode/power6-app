@@ -15,11 +15,11 @@ import 'package:power6_mobile/screens/streak_screen.dart';
 import 'package:power6_mobile/screens/timeline_screen.dart';
 import 'package:power6_mobile/screens/power_badge_screen.dart';
 import 'package:power6_mobile/screens/subscription_screen.dart' as subs;
+import 'package:power6_mobile/screens/account_settings_screen.dart';
 import 'package:power6_mobile/navigation/main_nav.dart';
 
 // Services
 import 'package:power6_mobile/services/streak_service.dart';
-
 
 /// Global messenger key so overlays/snackbars can work from anywhere.
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
@@ -62,6 +62,7 @@ class Power6App extends StatelessWidget {
           '/streak': (ctx) => const StreakScreen(),
           '/timeline': (ctx) => const TimelineScreen(),
           '/badges': (ctx) => const PowerBadgeScreen(),
+          '/account': (ctx) => const AccountSettingsScreen(),
           '/upgrade': (ctx) => const subs.SubscriptionScreen(),
           '/subscribe': (ctx) => const subs.SubscriptionScreen(),
         },
@@ -105,6 +106,3 @@ class _RootGateState extends State<_RootGate> {
     );
   }
 }
-
-
-

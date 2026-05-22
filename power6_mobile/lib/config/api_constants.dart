@@ -19,8 +19,11 @@ class ApiConstants {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static String get me => '/auth/me';
+  static const String deleteAccount = '/users/me';
+  static const String updateTier = '/users/me/tier';
+  static const String appleIapActivate = '/iap/apple/activate';
 
-  static const String tasks = '/tasks/';          // POST + list
+  static const String tasks = '/tasks/'; // POST + list
   static const String activeTasks = '/tasks/active';
   static const String taskHistory = '/tasks/history';
   static String taskById(String id) => '/tasks/$id';
@@ -32,4 +35,13 @@ class ApiConstants {
   static const String badgesEvaluate = '/badges/evaluate';
   static const String feedback = '/feedback';
   static const String stripeCheckout = '/stripe/create-checkout-session';
+
+  static const Map<String, String> appStoreProductIds = {
+    'plus_monthly': 'power6_plus_monthly',
+    'plus_yearly': 'power6_plus_yearly',
+    'pro_monthly': 'power6_pro_monthly',
+    'pro_yearly': 'power6_pro_yearly',
+    'elite_monthly': 'power6_elite_monthly',
+    'elite_yearly': 'power6_elite_yearly',
+  };
 }

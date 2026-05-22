@@ -1,14 +1,14 @@
 class DateUtils {
   static String formatDate(DateTime date) {
-    return "\${date.year}-\${_twoDigits(date.month)}-\${_twoDigits(date.day)}";
+    return "${date.year}-${_twoDigits(date.month)}-${_twoDigits(date.day)}";
   }
 
   static String formatTime(DateTime time) {
-    return "\${_twoDigits(time.hour)}:\${_twoDigits(time.minute)}";
+    return "${_twoDigits(time.hour)}:${_twoDigits(time.minute)}";
   }
 
   static String formatDateTime(DateTime dateTime) {
-    return "\${formatDate(dateTime)} \${formatTime(dateTime)}";
+    return "${formatDate(dateTime)} ${formatTime(dateTime)}";
   }
 
   static String getDayOfWeek(DateTime date) {
@@ -18,8 +18,18 @@ class DateUtils {
 
   static String getMonthName(int month) {
     const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
     ];
     return months[month - 1];
   }

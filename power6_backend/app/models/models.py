@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Boolean,
     CheckConstraint,
+    Text,
     text,
     Index,
 )
@@ -81,11 +82,32 @@ class Subscription(Base):
     active = Column(Boolean, nullable=False, server_default=text("true"))
     started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     user = relationship("User", back_populates="subscriptions")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Subscription id={self.id} tier={self.tier!r} active={self.active}>"
+
+
+class AppleIapTransaction(Base):
+    __tablename__ = "apple_iap_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String, nullable=False, index=True)
+    transaction_id = Column(String, nullable=True, index=True)
+    original_transaction_id = Column(String, nullable=True, index=True)
+    purchase_id = Column(String, nullable=True, index=True)
+    purchase_date = Column(DateTime(timezone=True), nullable=True)
+    expiration_date = Column(DateTime(timezone=True), nullable=True)
+    environment = Column(String, nullable=True, index=True)
+    revoked = Column(Boolean, nullable=False, server_default=text("false"))
+    revocation_date = Column(DateTime(timezone=True), nullable=True)
+    source = Column(String, nullable=False, server_default="ios_app_store")
+    raw_verification_data = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user = relationship("User")
 
 
 class AdminMessage(Base):

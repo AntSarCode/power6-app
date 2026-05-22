@@ -16,12 +16,12 @@ class Power6TopRightMenu extends StatelessWidget {
   });
 
   Future<void> _doLogout(BuildContext context) async {
+    final appState = context.read<AppState>();
     await AuthService().logout();
-    await context.read<AppState>().logout();
+    await appState.logout();
 
-    if (context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-    }
+    if (!context.mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   @override
@@ -38,6 +38,9 @@ class Power6TopRightMenu extends StatelessWidget {
       ),
       onSelected: (action) async {
         switch (action) {
+          case _TopMenuAction.account:
+            Navigator.of(context).pushNamed('/account');
+            break;
           case _TopMenuAction.feedback:
             await FeedbackReportDialog.show(
               context,
@@ -51,6 +54,14 @@ class Power6TopRightMenu extends StatelessWidget {
       },
       child: compact ? const _CompactMenuPill() : const _ExpandedMenuPill(),
       itemBuilder: (context) => const [
+        PopupMenuItem<_TopMenuAction>(
+          value: _TopMenuAction.account,
+          child: _MenuRow(
+            icon: Icons.manage_accounts_outlined,
+            label: 'Account settings',
+          ),
+        ),
+        PopupMenuDivider(),
         PopupMenuItem<_TopMenuAction>(
           value: _TopMenuAction.feedback,
           child: _MenuRow(
@@ -72,6 +83,7 @@ class Power6TopRightMenu extends StatelessWidget {
 }
 
 enum _TopMenuAction {
+  account,
   feedback,
   logout,
 }

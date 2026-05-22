@@ -72,8 +72,10 @@ class AuthService {
       String msg = 'Login failed: ${res.statusCode}';
       try {
         final body = jsonDecode(res.body);
-        if (body is Map && body['detail'] != null) msg = body['detail'].toString();
-        if (body is Map && body['message'] != null) msg = body['message'].toString();
+        if (body is Map && body['detail'] != null)
+          msg = body['detail'].toString();
+        if (body is Map && body['message'] != null)
+          msg = body['message'].toString();
       } catch (_) {}
       return ApiResponse.failure(msg);
     } catch (e) {
@@ -120,8 +122,10 @@ class AuthService {
       String msg = 'Sign-up failed: ${res.statusCode}';
       try {
         final body = jsonDecode(res.body);
-        if (body is Map && body['detail'] != null) msg = body['detail'].toString();
-        if (body is Map && body['message'] != null) msg = body['message'].toString();
+        if (body is Map && body['detail'] != null)
+          msg = body['detail'].toString();
+        if (body is Map && body['message'] != null)
+          msg = body['message'].toString();
       } catch (_) {}
       return ApiResponse.failure(msg);
     } catch (e) {
@@ -154,7 +158,8 @@ class AuthService {
       String msg = 'Failed to fetch user: ${res.statusCode}';
       try {
         final body = jsonDecode(res.body);
-        if (body is Map && body['detail'] != null) msg = body['detail'].toString();
+        if (body is Map && body['detail'] != null)
+          msg = body['detail'].toString();
       } catch (_) {}
       return ApiResponse.failure(msg);
     } catch (e) {
@@ -168,6 +173,32 @@ class AuthService {
     await prefs.remove('refresh_token');
     await prefs.remove('is_superuser');
     await prefs.remove('is_admin');
+  }
+
+  Future<ApiResponse> deleteAccount(String token) async {
+    try {
+      final res = await client.delete(
+        _u(ApiConstants.deleteAccount),
+        headers: _headers(token: token),
+      );
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        await logout();
+        return ApiResponse.success(<String, dynamic>{'ok': true});
+      }
+
+      String msg = 'Account deletion failed: ${res.statusCode}';
+      try {
+        final body = jsonDecode(res.body);
+        if (body is Map && body['detail'] != null)
+          msg = body['detail'].toString();
+        if (body is Map && body['message'] != null)
+          msg = body['message'].toString();
+      } catch (_) {}
+      return ApiResponse.failure(msg);
+    } catch (e) {
+      return ApiResponse.failure(e.toString());
+    }
   }
 
   Future<bool> isAuthenticated() async {
