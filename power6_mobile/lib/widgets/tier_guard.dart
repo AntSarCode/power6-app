@@ -29,14 +29,75 @@ class TierGuard extends StatelessWidget {
     }
 
     if (!hasAccess(requiredTier, user.tier)) {
-      // insufficient tier -> to Upgrade (or show fallback inline)
       if (fallback != null) return fallback!;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed('/upgrade');
-      });
-      return const SizedBox.shrink();
+      return _UpgradePrompt(requiredTier: requiredTier);
     }
 
     return child;
+  }
+}
+
+class _UpgradePrompt extends StatelessWidget {
+  final UserTier requiredTier;
+
+  const _UpgradePrompt({required this.requiredTier});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = requiredTier.name.toUpperCase();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.workspace_premium_outlined,
+                size: 44,
+                color: Color(0xFF64FFDA),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '$label feature',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Upgrade to access this feature. You can keep using your dashboard, tasks, review, account settings, and subscription options on the free tier.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed('/upgrade'),
+                    icon: const Icon(Icons.arrow_upward),
+                    label: const Text('Upgrade'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        Navigator.of(context).pushReplacementNamed('/home'),
+                    icon: const Icon(Icons.home_outlined),
+                    label: const Text('Back to Home'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

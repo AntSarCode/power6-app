@@ -1,13 +1,31 @@
 {
   "hosting": {
     "site": "power6-app-30bd8",
-    "public": "deploy_out",
+    "public": "power6_mobile/build/web",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "/support/**",
+        "destination": "/support/index.html"
+      },
+      {
+        "source": "/privacy/**",
+        "destination": "/privacy/index.html"
+      },
+      {
+        "source": "/terms/**",
+        "destination": "/terms/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
     "headers": [
       {
         "source": "**/*.@(js|css)",

@@ -17,8 +17,10 @@ import 'package:power6_mobile/screens/power_badge_screen.dart';
 import 'package:power6_mobile/screens/subscription_screen.dart' as subs;
 import 'package:power6_mobile/screens/account_settings_screen.dart';
 import 'package:power6_mobile/navigation/main_nav.dart';
+import 'package:power6_mobile/models/user.dart';
 
 // Services
+import 'package:power6_mobile/services/auth_service.dart';
 import 'package:power6_mobile/services/streak_service.dart';
 
 /// Global messenger key so overlays/snackbars can work from anywhere.
@@ -86,9 +88,28 @@ class _RootGateState extends State<_RootGate> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final appState = context.read<AppState>();
-      final hasToken = (appState.accessToken ?? '').isNotEmpty;
+      var token = appState.accessToken ?? '';
+
+      if (token.isEmpty) {
+        token = await AuthService.getToken() ?? '';
+        if (token.isNotEmpty) {
+          final userResponse = await AuthService().getCurrentUser();
+          if (userResponse.isSuccess && userResponse.data != null) {
+            final userMap = userResponse.data!['user'] as Map<String, dynamic>?;
+            await appState.setAuthToken(
+              token,
+              user: userMap == null ? null : User.fromJson(userMap),
+            );
+          } else {
+            await AuthService().logout();
+            token = '';
+          }
+        }
+      }
+
+      final hasToken = token.isNotEmpty;
       if (!mounted) return;
       if (hasToken) {
         Navigator.of(context).pushReplacementNamed('/home');

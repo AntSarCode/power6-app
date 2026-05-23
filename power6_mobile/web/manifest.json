@@ -1,11 +1,11 @@
 {
-    "name": "power6_mobile_fresh",
-    "short_name": "power6_mobile_fresh",
+    "name": "Power6",
+    "short_name": "Power6",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Power6 helps you focus on six meaningful tasks, review progress, and build consistency.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
