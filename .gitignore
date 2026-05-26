@@ -35,6 +35,10 @@ Thumbs.db
 /power6_mobile/macos/
 /power6_mobile/windows/
 /power6_mobile/linux/
+!/power6_mobile/ios/
+!/power6_mobile/ios/Podfile
+!/power6_mobile/ios/Runner/
+!/power6_mobile/ios/Runner/PrivacyInfo.xcprivacy
 
 # Generated assets
 **/gen/

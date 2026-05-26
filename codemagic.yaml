@@ -65,6 +65,15 @@ workflows:
         script: |
           flutter --version
 
+      - name: Verify Apple SDK version
+        script: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          if ! xcodebuild -showsdks | grep -Eq 'iphoneos(26|[3-9][0-9])\.'; then
+            echo "Apple requires iOS uploads submitted after April 28, 2026 to use the iOS 26 SDK or later."
+            exit 1
+          fi
+
       - name: Inspect iOS files
         script: |
           cd power6_mobile
@@ -74,6 +83,8 @@ workflows:
           cat ios/Runner/Info.plist || true
           echo "---- Podfile ----"
           cat ios/Podfile || true
+          echo "---- PrivacyInfo.xcprivacy ----"
+          cat ios/Runner/PrivacyInfo.xcprivacy || true
 
       - name: Clean stale iOS Flutter config
         script: |
