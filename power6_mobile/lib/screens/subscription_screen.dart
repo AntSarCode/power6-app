@@ -37,7 +37,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _handlePurchaseUpdates,
         onError: (Object error) {
           if (!mounted) return;
-          setState(() => _error = error.toString());
+          setState(() => _error = _storeMessageFor(error));
         },
       );
       _loadStoreProducts();
@@ -57,18 +57,42 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _error = null;
     });
 
-    final available = await _purchaseService.isAvailable();
+    bool available = false;
+    try {
+      available = await _purchaseService.isAvailable();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _storeAvailable = false;
+        _loadingProducts = false;
+        _error = _storeMessageFor(e);
+      });
+      return;
+    }
+
     if (!available) {
       if (!mounted) return;
       setState(() {
         _storeAvailable = false;
         _loadingProducts = false;
-        _error = 'App Store purchases are not available on this device.';
+        _error =
+            'App Store purchases are temporarily unavailable on this device.';
       });
       return;
     }
 
-    final response = await _purchaseService.loadProducts();
+    late final ProductDetailsResponse response;
+    try {
+      response = await _purchaseService.loadProducts();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _storeAvailable = true;
+        _loadingProducts = false;
+        _error = _storeMessageFor(e);
+      });
+      return;
+    }
     if (!mounted) return;
 
     setState(() {
@@ -78,12 +102,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         for (final product in response.productDetails) product.id: product,
       };
       if (response.error != null) {
-        _error = response.error!.message;
+        _error = _storeMessageFor(response.error!.message);
       } else if (response.notFoundIDs.isNotEmpty) {
         _error =
-            'Some App Store products are not configured: ${response.notFoundIDs.join(', ')}';
+            'App Store products are still being prepared. Please try again shortly.';
       }
     });
+  }
+
+  String _storeMessageFor(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('storekit') ||
+        raw.contains('platform') ||
+        raw.contains('product') ||
+        raw.contains('not found') ||
+        raw.contains('not available')) {
+      return 'App Store purchases are temporarily unavailable. Please try again shortly.';
+    }
+    return 'We could not reach the App Store. Please try again.';
   }
 
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
@@ -97,7 +133,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         if (mounted) {
           setState(() {
             _loading = false;
-            _error = purchase.error?.message ?? 'Purchase failed.';
+            _error = purchase.error == null
+                ? 'Purchase failed.'
+                : _storeMessageFor(purchase.error!.message);
           });
         }
       }
@@ -272,7 +310,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final productId = PurchaseService.productIdFor(tier, interval);
     final product = _products[productId];
     if (product == null) {
-      setState(() => _error = 'App Store product is not available: $productId');
+      setState(() {
+        _error =
+            'App Store products are still being prepared. Please try again shortly.';
+      });
       return;
     }
 
@@ -285,7 +326,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (!started && mounted) {
       setState(() {
         _loading = false;
-        _error = 'Could not start App Store purchase.';
+        _error = 'Could not start App Store purchase. Please try again.';
       });
     }
   }
@@ -302,7 +343,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       return interval == 'monthly' ? 'Choose Monthly' : 'Choose Yearly';
     }
     final product = _storeProduct(tier, interval);
-    if (product == null) return '$cadence unavailable';
+    if (product == null) {
+      return _loadingProducts ? 'Loading $cadence' : '$cadence unavailable';
+    }
     return '$cadence - ${product.price}';
   }
 
@@ -328,7 +371,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = _storeMessageFor(e);
       });
     }
   }
@@ -428,6 +471,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               child: Text(
                                 'Loading App Store prices...',
                                 textAlign: TextAlign.center,
+                              ),
+                            ),
+                          if (!_loadingProducts &&
+                              _products.isEmpty &&
+                              _error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: TextButton.icon(
+                                onPressed: _loadStoreProducts,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry App Store'),
                               ),
                             ),
                         ],

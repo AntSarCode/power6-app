@@ -11,12 +11,12 @@ from app.services.apple_iap_service import verify_apple_transaction
 router = APIRouter(prefix="/iap", tags=["In-App Purchases"])
 
 APPLE_PRODUCT_TIERS = {
-    "power6_plus_monthly": "plus",
-    "power6_plus_yearly": "plus",
-    "power6_pro_monthly": "pro",
-    "power6_pro_yearly": "pro",
-    "power6_elite_monthly": "elite",
-    "power6_elite_yearly": "elite",
+    "power6_plusM": "plus",
+    "power6_plusY": "plus",
+    "power6_proM": "pro",
+    "power6_proY": "pro",
+    "power6_eliteM": "elite",
+    "power6_eliteY": "elite",
 }
 
 

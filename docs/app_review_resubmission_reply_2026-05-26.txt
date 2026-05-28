@@ -1,0 +1,65 @@
+Power6 App Review Resubmission Reply
+Date: May 26, 2026
+
+Hello App Review Team,
+
+Thank you for the review notes. We have addressed the previously identified issues and are resubmitting Power6 for review.
+
+Guideline 5.1.1 - Account Deletion
+
+Power6 now supports in-app account deletion. A signed-in user can delete their account directly inside the app without being sent to a website or customer support flow.
+
+Account deletion path:
+Menu > Account settings > Delete Account
+
+The in-app deletion flow:
+1. User signs in.
+2. User opens Menu.
+3. User selects Account settings.
+4. User taps Delete Account.
+5. User confirms the deletion dialog.
+6. The app deletes the account and associated Power6 data, including tasks, subscription records, badges, and related account data.
+7. The user is logged out and returned to the login screen.
+
+A physical-device screen recording demonstrating this flow has been attached with this reply/submission.
+
+Guideline 1.5 - Support URL
+
+The Support URL has been updated and is publicly accessible:
+https://power6.app/support
+
+The support page provides a way for users to contact support and includes account deletion guidance.
+
+Privacy Policy:
+https://power6.app/privacy
+
+Review Account
+
+Power6 requires login. Please use the following review account:
+
+Email: app-review@power6.app
+Password: Power6Review!2026
+
+Suggested review path:
+1. Log in with the review account above.
+2. Create or review tasks from the dashboard/input screens.
+3. View task history/timeline and streak features.
+4. Open the Subscription tab to view the App Store subscription products.
+5. Use Restore Purchases if needed.
+6. Open Menu > Account settings > Delete Account to review the account deletion flow.
+
+Subscriptions and Payments
+
+Power6 uses Apple In-App Purchase for iOS subscriptions. The iOS app does not route users to Stripe for subscription checkout.
+
+The subscription product IDs configured for review are:
+- power6_plus_monthly
+- power6_plus_yearly
+- power6_pro_monthly
+- power6_pro_yearly
+- power6_elite_monthly
+- power6_elite_yearly
+
+These subscriptions are included in the same subscription group and are intended to be submitted with this app version for review.
+
+Thank you for reviewing the updated submission.

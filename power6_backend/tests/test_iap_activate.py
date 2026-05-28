@@ -58,7 +58,7 @@ def test_apple_iap_activate_records_purchase_and_updates_tier():
         "/iap/apple/activate",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "product_id": "power6_pro_monthly",
+            "product_id": "power6_proM",
             "transaction_id": "tx_123",
             "purchase_id": "purchase_123",
             "verification_data": "signed-data",
@@ -76,7 +76,7 @@ def test_apple_iap_activate_records_purchase_and_updates_tier():
         purchase = db.query(AppleIapTransaction).filter(
             AppleIapTransaction.user_id == user_id,
         ).first()
-        assert purchase.product_id == "power6_pro_monthly"
+        assert purchase.product_id == "power6_proM"
         assert purchase.transaction_id == "tx_123"
         assert purchase.original_transaction_id == "original_tx_123"
         assert purchase.expiration_date is not None
