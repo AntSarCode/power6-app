@@ -8,7 +8,7 @@
   - Username: `app_review_expired`
   - Email: `app-review@power6.app`
   - Password: `Power6Review!2026`
-  - State: expired/inactive subscription
+  - State: full-feature Elite access with an expired/inactive subscription record
 - IAP product IDs:
   - `power6_plusM`
   - `power6_plusY`
@@ -33,7 +33,7 @@ Default credentials:
 - Username: app_review_expired
 - Email: app-review@power6.app
 - Password: Power6Review!2026
-- Subscription state: Free user tier with an inactive Expired subscription record
+- Subscription state: Elite user tier with an inactive Expired subscription record
 
 Override these values with `POWER6_REVIEW_USERNAME`, `POWER6_REVIEW_EMAIL`, and `POWER6_REVIEW_PASSWORD` before running the script.
 

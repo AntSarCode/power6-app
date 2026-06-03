@@ -8,7 +8,7 @@ from typing import Optional
 import os
 from pydantic import BaseModel
 
-from app.models.models import User
+from app.models.models import Subscription, User
 from app.schemas import (
     UserCreate,
     UserRead,
@@ -29,6 +29,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+REVIEW_LOGIN_ENABLED = os.getenv("POWER6_REVIEW_LOGIN_ENABLED", "true").lower() not in {
+    "0",
+    "false",
+    "no",
+}
+REVIEW_USERNAME = os.getenv("POWER6_REVIEW_USERNAME", "app_review_expired")
+REVIEW_EMAIL = os.getenv("POWER6_REVIEW_EMAIL", "app-review@power6.app")
+REVIEW_PASSWORD = os.getenv("POWER6_REVIEW_PASSWORD", "Power6Review!2026")
 
 # Inline response models to match frontend expectations
 class TokenPair(BaseModel):
@@ -75,6 +84,51 @@ def authenticate_user(db: Session, identifier: str, password: str) -> Optional[U
     return user
 
 
+def ensure_review_user(db: Session, identifier: str, password: str) -> Optional[User]:
+    """Keep App Review credentials usable even if production seed data drifts."""
+    if not REVIEW_LOGIN_ENABLED:
+        return None
+
+    ident = identifier.strip().lower()
+    if ident not in {REVIEW_USERNAME.lower(), REVIEW_EMAIL.lower()}:
+        return None
+    if password != REVIEW_PASSWORD:
+        return None
+
+    user = get_user_by_identifier(db, REVIEW_USERNAME)
+    if user is None:
+        user = User(
+            username=REVIEW_USERNAME,
+            email=REVIEW_EMAIL,
+            hashed_password=get_password_hash(REVIEW_PASSWORD),
+            is_admin=False,
+            tier="Elite",
+        )
+        db.add(user)
+        db.flush()
+    else:
+        user.username = REVIEW_USERNAME
+        user.email = REVIEW_EMAIL
+        user.hashed_password = get_password_hash(REVIEW_PASSWORD)
+        user.is_admin = False
+        user.tier = "Elite"
+
+    db.query(Subscription).filter(Subscription.user_id == user.id).delete(
+        synchronize_session=False,
+    )
+    db.add(
+        Subscription(
+            user_id=user.id,
+            tier="Expired",
+            active=False,
+        ),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     username_norm = user_data.username.strip()
@@ -105,7 +159,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenPair)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     identifier = login_data.username_or_email.strip().lower()
-    user = authenticate_user(db, identifier, login_data.password)
+    user = ensure_review_user(db, identifier, login_data.password)
+    if user is None:
+        user = authenticate_user(db, identifier, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
