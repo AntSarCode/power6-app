@@ -8,7 +8,7 @@
   - Username: `app_review_expired`
   - Email: `app-review@power6.app`
   - Password: `Power6Review!2026`
-  - State: full-feature Elite access with an expired/inactive subscription record
+  - State: expired subscription account; Subscribe tab is available for App Store purchase flow review
 - IAP product IDs:
   - `power6_plusM`
   - `power6_plusY`
@@ -22,7 +22,7 @@
 
 ## Review Account
 
-Seed a free/expired review account from the backend directory:
+Seed an expired review account from the backend directory:
 
 ```bash
 python -m app.scripts.seed_review_account
@@ -33,7 +33,7 @@ Default credentials:
 - Username: app_review_expired
 - Email: app-review@power6.app
 - Password: Power6Review!2026
-- Subscription state: Elite user tier with an inactive Expired subscription record
+- Subscription state: Expired user tier with an inactive Expired subscription record
 
 Override these values with `POWER6_REVIEW_USERNAME`, `POWER6_REVIEW_EMAIL`, and `POWER6_REVIEW_PASSWORD` before running the script.
 

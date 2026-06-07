@@ -380,6 +380,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final currentTier = (app.user?.tier ?? 'free').toString().toLowerCase();
+    final isExpired = currentTier == 'expired';
     final displayTier = currentTier.isNotEmpty
         ? '${currentTier[0].toUpperCase()}${currentTier.substring(1)}'
         : 'Free';
@@ -438,11 +439,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 children: [
                   Center(
                     child: Text(
-                      'Your Current Tier: $displayTier',
+                      isExpired
+                          ? 'Subscription Expired'
+                          : 'Your Current Tier: $displayTier',
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   ),
+                  if (isExpired)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Choose a plan below to renew through the App Store.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   if (_error != null)
                     Padding(

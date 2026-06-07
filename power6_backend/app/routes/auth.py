@@ -102,7 +102,7 @@ def ensure_review_user(db: Session, identifier: str, password: str) -> Optional[
             email=REVIEW_EMAIL,
             hashed_password=get_password_hash(REVIEW_PASSWORD),
             is_admin=False,
-            tier="Elite",
+            tier="Expired",
         )
         db.add(user)
         db.flush()
@@ -111,7 +111,7 @@ def ensure_review_user(db: Session, identifier: str, password: str) -> Optional[
         user.email = REVIEW_EMAIL
         user.hashed_password = get_password_hash(REVIEW_PASSWORD)
         user.is_admin = False
-        user.tier = "Elite"
+        user.tier = "Expired"
 
     db.query(Subscription).filter(Subscription.user_id == user.id).delete(
         synchronize_session=False,

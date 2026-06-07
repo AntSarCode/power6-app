@@ -22,7 +22,7 @@ def seed_review_account() -> None:
                 email=REVIEW_EMAIL,
                 hashed_password=get_password_hash(REVIEW_PASSWORD),
                 is_admin=False,
-                tier="Elite",
+                tier="Expired",
             )
             db.add(user)
             db.flush()
@@ -30,7 +30,7 @@ def seed_review_account() -> None:
             user.email = REVIEW_EMAIL
             user.hashed_password = get_password_hash(REVIEW_PASSWORD)
             user.is_admin = False
-            user.tier = "Elite"
+            user.tier = "Expired"
 
         db.query(Subscription).filter(Subscription.user_id == user.id).delete(
             synchronize_session=False,

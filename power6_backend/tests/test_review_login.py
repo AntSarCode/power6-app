@@ -11,7 +11,7 @@ from app.models.models import Subscription, User
 from app.utils.hash import get_password_hash
 
 
-def test_review_login_creates_full_access_expired_account():
+def test_review_login_creates_expired_account_for_purchase_flow():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     app = build_app()
@@ -34,7 +34,7 @@ def test_review_login_creates_full_access_expired_account():
     try:
         user = db.query(User).filter(User.username == "app_review_expired").one()
         assert user.email == "app-review@power6.app"
-        assert user.tier == "Elite"
+        assert user.tier == "Expired"
         subscriptions = db.query(Subscription).filter(
             Subscription.user_id == user.id,
         ).all()
@@ -82,7 +82,7 @@ def test_review_login_repairs_stale_password_and_tier():
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == "app_review_expired").one()
-        assert user.tier == "Elite"
+        assert user.tier == "Expired"
         assert user.is_admin is False
     finally:
         db.close()
