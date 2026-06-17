@@ -103,7 +103,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       };
       if (response.error != null) {
         _error = _storeMessageFor(response.error!.message);
-      } else if (response.notFoundIDs.isNotEmpty) {
+      } else if (response.productDetails.isEmpty &&
+          response.notFoundIDs.isNotEmpty) {
         _error =
             'App Store products are still being prepared. Please try again shortly.';
       }
@@ -337,6 +338,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return _products[productId];
   }
 
+  bool _shouldShowPlan(String tier) {
+    if (!_useAppleIap) return true;
+    if (_loadingProducts) return true;
+    return _storeProduct(tier, 'monthly') != null ||
+        _storeProduct(tier, 'yearly') != null;
+  }
+
   String _purchaseLabel(String tier, String interval) {
     final cadence = interval == 'monthly' ? 'Monthly' : 'Yearly';
     if (!_useAppleIap) {
@@ -499,53 +507,58 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ],
                       ),
                     ),
-                  _PlanCard(
-                    title: 'PLUS',
-                    subtitle: 'Access streak tracker and timeline',
-                    bullets: const [
-                      'Daily streak tracker',
-                      'Task timeline view',
-                      'Priority badges and glow UI',
-                    ],
-                    isCurrent: currentTier == 'plus',
-                    accent: const Color.fromRGBO(100, 255, 218, 1),
-                    monthlyLabel: _purchaseLabel('plus', 'monthly'),
-                    yearlyLabel: _purchaseLabel('plus', 'yearly'),
-                    onMonthly: _purchaseAction(context, 'plus', 'monthly'),
-                    onYearly: _purchaseAction(context, 'plus', 'yearly'),
-                  ),
-                  const SizedBox(height: 16),
-                  _PlanCard(
-                    title: 'PRO',
-                    subtitle: 'All Plus features + CSV export',
-                    bullets: const [
-                      'Everything in Plus',
-                      'CSV export & analytics',
-                      'Priority support',
-                    ],
-                    isCurrent: currentTier == 'pro',
-                    accent: const Color.fromRGBO(173, 216, 230, 1),
-                    monthlyLabel: _purchaseLabel('pro', 'monthly'),
-                    yearlyLabel: _purchaseLabel('pro', 'yearly'),
-                    onMonthly: _purchaseAction(context, 'pro', 'monthly'),
-                    onYearly: _purchaseAction(context, 'pro', 'yearly'),
-                  ),
-                  const SizedBox(height: 16),
-                  _PlanCard(
-                    title: 'ELITE',
-                    subtitle: 'Everything Pro offers + group features',
-                    bullets: const [
-                      'Everything in Pro',
-                      'Group budgets & leaderboards',
-                      'Early feature access',
-                    ],
-                    isCurrent: currentTier == 'elite',
-                    accent: const Color.fromRGBO(255, 215, 0, 1),
-                    monthlyLabel: _purchaseLabel('elite', 'monthly'),
-                    yearlyLabel: _purchaseLabel('elite', 'yearly'),
-                    onMonthly: _purchaseAction(context, 'elite', 'monthly'),
-                    onYearly: _purchaseAction(context, 'elite', 'yearly'),
-                  ),
+                  if (_shouldShowPlan('plus')) ...[
+                    _PlanCard(
+                      title: 'PLUS',
+                      subtitle: 'Access streak tracker and timeline',
+                      bullets: const [
+                        'Daily streak tracker',
+                        'Task timeline view',
+                        'Priority badges and glow UI',
+                      ],
+                      isCurrent: currentTier == 'plus',
+                      accent: const Color.fromRGBO(100, 255, 218, 1),
+                      monthlyLabel: _purchaseLabel('plus', 'monthly'),
+                      yearlyLabel: _purchaseLabel('plus', 'yearly'),
+                      onMonthly: _purchaseAction(context, 'plus', 'monthly'),
+                      onYearly: _purchaseAction(context, 'plus', 'yearly'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_shouldShowPlan('pro')) ...[
+                    _PlanCard(
+                      title: 'PRO',
+                      subtitle: 'All Plus features + CSV export',
+                      bullets: const [
+                        'Everything in Plus',
+                        'CSV export & analytics',
+                        'Priority support',
+                      ],
+                      isCurrent: currentTier == 'pro',
+                      accent: const Color.fromRGBO(173, 216, 230, 1),
+                      monthlyLabel: _purchaseLabel('pro', 'monthly'),
+                      yearlyLabel: _purchaseLabel('pro', 'yearly'),
+                      onMonthly: _purchaseAction(context, 'pro', 'monthly'),
+                      onYearly: _purchaseAction(context, 'pro', 'yearly'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_shouldShowPlan('elite'))
+                    _PlanCard(
+                      title: 'ELITE',
+                      subtitle: 'Everything Pro offers + group features',
+                      bullets: const [
+                        'Everything in Pro',
+                        'Group budgets & leaderboards',
+                        'Early feature access',
+                      ],
+                      isCurrent: currentTier == 'elite',
+                      accent: const Color.fromRGBO(255, 215, 0, 1),
+                      monthlyLabel: _purchaseLabel('elite', 'monthly'),
+                      yearlyLabel: _purchaseLabel('elite', 'yearly'),
+                      onMonthly: _purchaseAction(context, 'elite', 'monthly'),
+                      onYearly: _purchaseAction(context, 'elite', 'yearly'),
+                    ),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.all(16.0),

@@ -1,0 +1,33 @@
+Power6 App Review Resubmission Reply
+Date: June 17, 2026
+
+Hello App Review Team,
+
+Thank you for the review notes for Guideline 2.1(b). We have updated Power6's in-app purchase implementation and are submitting a new build for review.
+
+Changes made in this build:
+1. The iOS app now uses the App Store subscription product IDs configured for review:
+   - power6_plus_monthly
+   - power6_plus_yearly
+   - power6_pro_monthly
+   - power6_pro_yearly
+   - power6_elite_monthly
+   - power6_elite_yearly
+2. The subscription screen no longer treats unrelated missing App Store product IDs as a global purchase failure.
+3. On iOS, subscription plans are shown only when the App Store returns available products for that plan, so reviewers should not see disabled or unavailable purchase options.
+4. The backend activation endpoint accepts the canonical product IDs above and keeps compatibility with the previous short-form IDs.
+
+Please use the review account below:
+
+Email: app-review@power6.app
+Password: Power6Review!2026
+
+Suggested review path:
+1. Sign in with the review account.
+2. Open the Subscribe tab.
+3. Select an available App Store subscription option.
+4. Use Restore Purchases if needed.
+
+The iOS app uses Apple In-App Purchase for subscriptions and does not route users to Stripe checkout.
+
+Thank you for reviewing the updated build.

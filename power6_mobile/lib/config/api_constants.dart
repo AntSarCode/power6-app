@@ -37,11 +37,11 @@ class ApiConstants {
   static const String stripeCheckout = '/stripe/create-checkout-session';
 
   static const Map<String, String> appStoreProductIds = {
-    'plus_monthly': 'power6_plusM',
-    'plus_yearly': 'power6_plusY',
-    'pro_monthly': 'power6_proM',
-    'pro_yearly': 'power6_proY',
-    'elite_monthly': 'power6_eliteM',
-    'elite_yearly': 'power6_eliteY',
+    'plus_monthly': 'power6_plus_monthly',
+    'plus_yearly': 'power6_plus_yearly',
+    'pro_monthly': 'power6_pro_monthly',
+    'pro_yearly': 'power6_pro_yearly',
+    'elite_monthly': 'power6_elite_monthly',
+    'elite_yearly': 'power6_elite_yearly',
   };
 }
