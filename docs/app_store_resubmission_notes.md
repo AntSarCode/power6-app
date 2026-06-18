@@ -10,12 +10,12 @@
   - Password: `Power6Review!2026`
   - State: expired subscription account; Subscribe tab is available for App Store purchase flow review
 - IAP product IDs:
-  - `power6_plus_monthly`
-  - `power6_plus_yearly`
-  - `power6_pro_monthly`
-  - `power6_pro_yearly`
-  - `power6_elite_monthly`
-  - `power6_elite_yearly`
+  - `power6_plusM`
+  - `power6_plusY`
+  - `power6_proM`
+  - `power6_proY`
+  - `power6_eliteM`
+  - `power6_eliteY`
 - Reminder: IAP products must be submitted in App Store Connect with the binary.
 - Reminder: upload a physical-device screen recording of account deletion.
 - Reminder: upload real iPad screenshots from the installed app, not Safari or `power6.app`.
@@ -43,12 +43,12 @@ Override these values with `POWER6_REVIEW_USERNAME`, `POWER6_REVIEW_EMAIL`, and 
 - Delete account path in app: Menu > Account settings > Delete Account
 - Account deletion screen recording: upload with review notes or describe the attached media location.
 - Create subscription products matching these product IDs:
-  - `power6_plus_monthly`
-  - `power6_plus_yearly`
-  - `power6_pro_monthly`
-  - `power6_pro_yearly`
-  - `power6_elite_monthly`
-  - `power6_elite_yearly`
+  - `power6_plusM`
+  - `power6_plusY`
+  - `power6_proM`
+  - `power6_proY`
+  - `power6_eliteM`
+  - `power6_eliteY`
 - Upload the required IAP review screenshot for each subscription group/product.
 - Submit the IAP products with the new binary so review can validate purchases.
 - Set the Support URL to `https://power6.app/support`.

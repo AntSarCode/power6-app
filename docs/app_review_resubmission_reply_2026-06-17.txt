@@ -7,12 +7,12 @@ Thank you for the review notes for Guideline 2.1(b). We have updated Power6's in
 
 Changes made in this build:
 1. The iOS app now uses the App Store subscription product IDs configured for review:
-   - power6_plus_monthly
-   - power6_plus_yearly
-   - power6_pro_monthly
-   - power6_pro_yearly
-   - power6_elite_monthly
-   - power6_elite_yearly
+   - power6_plusM
+   - power6_plusY
+   - power6_proM
+   - power6_proY
+   - power6_eliteM
+   - power6_eliteY
 2. The subscription screen no longer treats unrelated missing App Store product IDs as a global purchase failure.
 3. On iOS, subscription plans are shown only when the App Store returns available products for that plan, so reviewers should not see disabled or unavailable purchase options.
 4. The backend activation endpoint accepts the canonical product IDs above and keeps compatibility with the previous short-form IDs.
