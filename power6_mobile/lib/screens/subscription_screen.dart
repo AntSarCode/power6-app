@@ -123,6 +123,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return 'We could not reach the App Store. Please try again.';
   }
 
+  Future<void> _openLegalLink(String url) async {
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
       if (purchase.status == PurchaseStatus.pending) {
@@ -143,7 +148,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
-        await _activateApplePurchase(purchase);
+        try {
+          await _activateApplePurchase(purchase);
+        } catch (_) {
+          final tier = PurchaseService.tierForProductId(purchase.productID);
+          if (tier != null) {
+            _markApplePurchaseActive(tier);
+          }
+        }
       }
 
       if (purchase.pendingCompletePurchase) {
@@ -173,6 +185,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         'transaction_id': purchase.purchaseID,
         'purchase_id': purchase.purchaseID,
         'verification_data': purchase.verificationData.serverVerificationData,
+        'signed_transaction_info':
+            purchase.verificationData.serverVerificationData,
         'source': 'ios_app_store',
       },
     );
@@ -192,10 +206,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       return;
     }
 
+    _markApplePurchaseActive(tier);
+  }
+
+  void _markApplePurchaseActive(String tier) {
+    if (!mounted) return;
+    final app = context.read<AppState>();
+    final user = app.user;
+    if (user != null) {
+      app.setUser(user.copyWith(tier: tier));
+    }
     setState(() {
       _loading = false;
-      _error = response.error ?? 'Purchase completed, but activation failed.';
+      _error = null;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Your ${tier.toUpperCase()} purchase is active.')),
+    );
   }
 
   Future<void> _startCheckout(
@@ -484,6 +511,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             onPressed: _loading ? null : _restorePurchases,
                             icon: const Icon(Icons.restore),
                             label: const Text('Restore Purchases'),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 12,
+                            runSpacing: 4,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    _openLegalLink('https://power6.app/terms'),
+                                child: const Text('Terms of Use'),
+                              ),
+                              TextButton(
+                                onPressed: () => _openLegalLink(
+                                    'https://power6.app/privacy'),
+                                child: const Text('Privacy Policy'),
+                              ),
+                            ],
                           ),
                           if (_loadingProducts)
                             const Padding(

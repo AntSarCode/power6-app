@@ -81,6 +81,10 @@ def _decode_jws_payload(jws: str) -> dict[str, Any]:
         )
 
 
+def _looks_like_jws(value: str | None) -> bool:
+    return bool(value and len(value.split(".")) == 3)
+
+
 def _ms_to_datetime(value: Any) -> datetime | None:
     if value in (None, ""):
         return None
@@ -111,6 +115,63 @@ async def _fetch_transaction(transaction_id: str, endpoint: str, token: str) -> 
     return signed
 
 
+def _verified_from_signed_transaction(
+    *,
+    product_id: str,
+    signed_transaction_info: str,
+) -> VerifiedAppleTransaction:
+    data = _decode_jws_payload(signed_transaction_info)
+
+    bundle_id = data.get("bundleId")
+    if settings.APPLE_IAP_BUNDLE_ID and bundle_id != settings.APPLE_IAP_BUNDLE_ID:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Apple transaction bundle ID does not match this app.",
+        )
+
+    if data.get("productId") != product_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Apple transaction product ID does not match the requested product.",
+        )
+
+    revocation_date = _ms_to_datetime(data.get("revocationDate"))
+    expiration_date = _ms_to_datetime(data.get("expiresDate"))
+    if revocation_date is not None:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Apple subscription has been revoked or refunded.",
+        )
+    if expiration_date is not None and expiration_date <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Apple subscription is expired.",
+        )
+
+    verified_transaction_id = str(data.get("transactionId") or "")
+    if not verified_transaction_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Apple transaction is missing a transaction ID.",
+        )
+
+    return VerifiedAppleTransaction(
+        product_id=product_id,
+        transaction_id=verified_transaction_id,
+        original_transaction_id=(
+            str(data["originalTransactionId"])
+            if data.get("originalTransactionId") is not None
+            else None
+        ),
+        purchase_date=_ms_to_datetime(data.get("purchaseDate")),
+        expiration_date=expiration_date,
+        environment=data.get("environment"),
+        revoked=revocation_date is not None,
+        revocation_date=revocation_date,
+        signed_transaction_info=signed_transaction_info,
+    )
+
+
 async def verify_apple_transaction(
     *,
     product_id: str,
@@ -123,8 +184,14 @@ async def verify_apple_transaction(
             detail="Transaction ID or signed transaction information is required.",
         )
 
+    if _looks_like_jws(signed_transaction_info):
+        return _verified_from_signed_transaction(
+            product_id=product_id,
+            signed_transaction_info=signed_transaction_info or "",
+        )
+
     verified_transaction_id = transaction_id
-    if not verified_transaction_id and signed_transaction_info:
+    if not verified_transaction_id and _looks_like_jws(signed_transaction_info):
         client_payload = _decode_jws_payload(signed_transaction_info)
         raw_transaction_id = client_payload.get("transactionId")
         if raw_transaction_id:

@@ -1,6 +1,6 @@
 Power6 Terms of Use
 
-Effective Date: [04/18/2026]
+Effective Date: 04/18/2026
 
 Welcome to Power6. These Terms of Use govern your access to and use of the Power6 website, application, and related services.
 
@@ -64,7 +64,13 @@ fees will be charged according to the plan you select;
 
 recurring subscriptions may renew automatically unless canceled before renewal;
 
-payments are processed by third-party payment processors such as Stripe, subject to their terms and policies;
+iPhone and iPad subscriptions are auto-renewable subscriptions billed through your Apple ID and managed by Apple;
+
+available App Store plans show their title, subscription length, and localized price before purchase;
+
+Apple subscriptions renew automatically unless canceled at least 24 hours before the end of the current period;
+
+you can manage or cancel Apple subscriptions in your Apple ID subscription settings;
 
 subscription access may be suspended or terminated for failed or reversed payments.
 
@@ -90,7 +96,7 @@ We do not guarantee uninterrupted or error-free operation of Power6. The service
 
 We may suspend or terminate your access to Power6 at our discretion if you violate these Terms, create risk for the platform, or misuse the service.
 
-You may stop using the service at any time. If you wish to delete your account, follow the in-app process or contact us at [Insert Contact Email].
+You may stop using the service at any time. If you wish to delete your account, follow the in-app process or contact us at support@power6.app.
 
 11. Disclaimers
 
@@ -112,9 +118,9 @@ You agree to indemnify and hold harmless Power6 and its operators from and again
 
 14. Governing Law
 
-These Terms are governed by the laws of [the state of Kentucky], without regard to conflict of laws principles.
+These Terms are governed by the laws of the state of Kentucky, without regard to conflict of laws principles.
 
-Any disputes arising from these Terms or your use of the service shall be resolved in the courts located in [Lexington, Kentucky], and you consent to their jurisdiction.
+Any disputes arising from these Terms or your use of the service shall be resolved in the courts located in Lexington, Kentucky, and you consent to their jurisdiction.
 
 15. Changes to These Terms
 
@@ -124,4 +130,9 @@ We may update these Terms from time to time. When we do, we will revise the Effe
 
 For questions about these Terms, contact:
 
-Power6Email: [antony.saragas@gmail.com]
+Power6
+Email: support@power6.app
+
+Apple Standard Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
+Privacy Policy: https://power6.app/privacy

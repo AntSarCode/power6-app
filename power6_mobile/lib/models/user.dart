@@ -78,4 +78,26 @@ class User {
         'updated_at': updatedAt?.toIso8601String(),
         'streak': streak,
       };
+
+  User copyWith({
+    int? id,
+    String? username,
+    bool? isAdmin,
+    String? email,
+    String? tier,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? streak,
+  }) {
+    return User(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      isAdmin: isAdmin ?? this.isAdmin,
+      email: email ?? this.email,
+      tier: tier ?? this.tier,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      streak: streak ?? this.streak,
+    );
+  }
 }

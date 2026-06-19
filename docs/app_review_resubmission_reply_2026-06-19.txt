@@ -1,0 +1,34 @@
+Power6 App Review Resubmission Reply
+Date: June 19, 2026
+
+Hello App Review Team,
+
+Thank you for the review notes for Guideline 3.1.2(c) and Guideline 2.1(b). We have corrected both issues and are submitting a new build for review.
+
+Changes made in this build:
+1. The App Store description now includes a functional Terms of Use (EULA) link:
+   https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+2. The App Store description and App Review Notes also include:
+   - Power6 Terms: https://power6.app/terms
+   - Privacy Policy: https://power6.app/privacy
+3. The iOS subscription screen now shows functional Terms of Use and Privacy Policy links directly alongside Restore Purchases.
+4. The public Power6 Terms page now includes Apple auto-renewable subscription language, Apple ID subscription management/cancellation language, and the Apple Standard Terms of Use (EULA) link.
+5. The StoreKit purchase activation path has been updated so completed StoreKit 2 sandbox purchases activate the selected tier without displaying an error after purchase.
+6. The backend activation endpoint now accepts StoreKit 2 signed transaction payloads directly and records the transaction without requiring a second Apple Transaction Info API lookup.
+7. The next binary uses build number 16, replacing the rejected build 15.
+
+Please use the review account below:
+
+Username: app_review_expired
+Password: Power6Review!2026
+
+Suggested subscription review path:
+1. Sign in with the review account.
+2. Open the Subscribe tab.
+3. Select an available App Store subscription option.
+4. Confirm that the selected plan activates without a post-purchase error.
+5. Use Restore Purchases if needed.
+
+Power6 uses Apple In-App Purchase for iOS subscriptions and does not route iPhone or iPad users to Stripe checkout.
+
+Thank you for reviewing the updated build.

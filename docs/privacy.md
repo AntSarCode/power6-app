@@ -32,7 +32,7 @@ We may collect the following categories of information:
 
 ### C. Payment Information
 
-Payments are processed by third-party payment providers such as Stripe. Power6 does not store full payment card numbers. We may receive limited subscription, billing, and transaction metadata from our payment processor.
+Payments for iPhone and iPad subscriptions are processed by Apple through your Apple ID. Power6 does not store full payment card numbers. We may receive limited subscription, billing, and transaction metadata needed to manage your plan access.
 
 ## 2. How We Use Information
 
@@ -52,7 +52,7 @@ We may use your information to:
 
 We may share information:
 
-* with service providers that help operate the platform, such as hosting providers, analytics providers, database providers, and payment processors;
+* with service providers that help operate the platform, such as hosting providers, analytics providers, database providers, and subscription processors;
 * when required by law, regulation, subpoena, or legal process;
 * to protect rights, safety, security, or property;
 * in connection with a merger, acquisition, financing, or sale of all or part of the business.
@@ -95,7 +95,7 @@ To exercise these rights, contact us at **[antony.saragas@gmail.com]**.
 
 ## 8. Third-Party Services
 
-Power6 may integrate with or rely on third-party services, including payment processors, hosting providers, analytics tools, and authentication-related services. Their handling of data is governed by their own privacy policies and terms.
+Power6 may integrate with or rely on third-party services, including subscription processors, hosting providers, analytics tools, and authentication-related services. Their handling of data is governed by their own privacy policies and terms.
 
 ## 9. Children’s Privacy
 

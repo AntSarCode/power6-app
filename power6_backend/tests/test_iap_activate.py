@@ -1,4 +1,6 @@
 import os
+import base64
+import json
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_iap_activate.sqlite")
 os.environ.setdefault("SECRET_KEY", "test-secret")
@@ -11,7 +13,18 @@ from app.main import build_app
 from app.models.models import AppleIapTransaction, Subscription, User
 from app.routes.auth import create_access_token
 from app.services.apple_iap_service import VerifiedAppleTransaction
+from app.services.apple_iap_service import verify_apple_transaction
 from app.utils.hash import get_password_hash
+
+
+def _unsigned_jws(payload: dict) -> str:
+    header = {"alg": "none"}
+
+    def encode(part: dict) -> str:
+        raw = json.dumps(part, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+
+    return f"{encode(header)}.{encode(payload)}.signature"
 
 
 def test_apple_iap_activate_records_purchase_and_updates_tier():
@@ -38,6 +51,7 @@ def test_apple_iap_activate_records_purchase_and_updates_tier():
 
     token = create_access_token({"sub": "iap_user"})
     import app.routes.iap as iap_route
+    original_verify = iap_route.verify_apple_transaction
 
     async def fake_verify_apple_transaction(*, product_id, transaction_id, signed_transaction_info):
         return VerifiedAppleTransaction(
@@ -65,6 +79,7 @@ def test_apple_iap_activate_records_purchase_and_updates_tier():
             "source": "ios_app_store",
         },
     )
+    iap_route.verify_apple_transaction = original_verify
 
     assert response.status_code == 200
     assert response.json()["tier"] == "pro"
@@ -108,6 +123,7 @@ def test_apple_iap_activate_accepts_legacy_short_product_id():
 
     token = create_access_token({"sub": "iap_legacy_user"})
     import app.routes.iap as iap_route
+    original_verify = iap_route.verify_apple_transaction
 
     async def fake_verify_apple_transaction(*, product_id, transaction_id, signed_transaction_info):
         return VerifiedAppleTransaction(
@@ -134,6 +150,111 @@ def test_apple_iap_activate_accepts_legacy_short_product_id():
             "source": "ios_app_store",
         },
     )
+    iap_route.verify_apple_transaction = original_verify
 
     assert response.status_code == 200
     assert response.json()["tier"] == "pro"
+
+
+def test_verify_apple_transaction_accepts_storekit2_signed_payload_without_server_lookup():
+    signed = _unsigned_jws(
+        {
+            "bundleId": "app.power6.mobile",
+            "productId": "power6_proM",
+            "transactionId": "2000000123456789",
+            "originalTransactionId": "2000000000000001",
+            "purchaseDate": 1781800000000,
+            "expiresDate": 1784392000000,
+            "environment": "Sandbox",
+        },
+    )
+
+    import app.services.apple_iap_service as apple_service
+
+    original_bundle_id = apple_service.settings.APPLE_IAP_BUNDLE_ID
+    try:
+        apple_service.settings.APPLE_IAP_BUNDLE_ID = "app.power6.mobile"
+        verified = __import__("asyncio").run(
+            verify_apple_transaction(
+                product_id="power6_proM",
+                transaction_id=None,
+                signed_transaction_info=signed,
+            ),
+        )
+    finally:
+        apple_service.settings.APPLE_IAP_BUNDLE_ID = original_bundle_id
+
+    assert verified.product_id == "power6_proM"
+    assert verified.transaction_id == "2000000123456789"
+    assert verified.original_transaction_id == "2000000000000001"
+    assert verified.environment == "Sandbox"
+    assert verified.expiration_date is not None
+
+
+def test_apple_iap_activate_records_storekit2_signed_payload():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    app = build_app()
+    client = TestClient(app)
+
+    from app.database import SessionLocal
+    import app.services.apple_iap_service as apple_service
+
+    db = SessionLocal()
+    try:
+        user = User(
+            username="iap_sk2_user",
+            email="iap_sk2_user@example.com",
+            hashed_password=get_password_hash("Password123!"),
+            tier="Free",
+        )
+        db.add(user)
+        db.commit()
+        user_id = user.id
+    finally:
+        db.close()
+
+    signed = _unsigned_jws(
+        {
+            "bundleId": "app.power6.mobile",
+            "productId": "power6_eliteM",
+            "transactionId": "2000000999999999",
+            "originalTransactionId": "2000000888888888",
+            "purchaseDate": 1781800000000,
+            "expiresDate": 1784392000000,
+            "environment": "Sandbox",
+        },
+    )
+
+    token = create_access_token({"sub": "iap_sk2_user"})
+    original_bundle_id = apple_service.settings.APPLE_IAP_BUNDLE_ID
+    try:
+        apple_service.settings.APPLE_IAP_BUNDLE_ID = "app.power6.mobile"
+        response = client.post(
+            "/iap/apple/activate",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "product_id": "power6_eliteM",
+                "signed_transaction_info": signed,
+                "verification_data": signed,
+                "source": "ios_app_store",
+            },
+        )
+    finally:
+        apple_service.settings.APPLE_IAP_BUNDLE_ID = original_bundle_id
+
+    assert response.status_code == 200
+    assert response.json()["tier"] == "elite"
+
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.id == user_id).first().tier == "elite"
+        purchase = db.query(AppleIapTransaction).filter(
+            AppleIapTransaction.user_id == user_id,
+        ).first()
+        assert purchase.product_id == "power6_eliteM"
+        assert purchase.transaction_id == "2000000999999999"
+        assert purchase.original_transaction_id == "2000000888888888"
+        assert purchase.environment == "Sandbox"
+    finally:
+        db.close()
