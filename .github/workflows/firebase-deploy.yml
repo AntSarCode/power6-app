@@ -30,11 +30,16 @@ jobs:
           mkdir -p deploy_out
           rsync -a power6_mobile/build/web/ deploy_out/
 
-      # 🔽 Service-account based Hosting deploy (no firebase login/CLI token)
+      - name: Stamp Firebase Hosting build
+        run: |
+          printf '{"sha":"%s","run_id":"%s","run_attempt":"%s"}\n' \
+            "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            > power6_mobile/build/web/deploy-version.json
+
       - name: Deploy to Firebase Hosting (live)
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}  # <-- or your existing secret name
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}  # optional if .firebaserc is correct
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
