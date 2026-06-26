@@ -21,6 +21,7 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final PurchaseService _purchaseService = PurchaseService();
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  Timer? _storeOperationTimer;
   Map<String, ProductDetails> _products = const {};
   bool _storeAvailable = false;
   bool _loadingProducts = false;
@@ -37,7 +38,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _handlePurchaseUpdates,
         onError: (Object error) {
           if (!mounted) return;
-          setState(() => _error = _storeMessageFor(error));
+          _finishStoreOperation();
+          setState(() {
+            _loading = false;
+            _error = _storeMessageFor(error);
+          });
         },
       );
       _loadStoreProducts();
@@ -46,8 +51,26 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   void dispose() {
+    _storeOperationTimer?.cancel();
     _purchaseSubscription?.cancel();
     super.dispose();
+  }
+
+  void _startStoreOperationTimeout({String? message}) {
+    _storeOperationTimer?.cancel();
+    _storeOperationTimer = Timer(const Duration(seconds: 12), () {
+      if (!mounted || !_loading) return;
+      setState(() {
+        _loading = false;
+        _error = message ??
+            'The App Store is still processing this purchase. You can keep using Power6 or try Restore Purchases shortly.';
+      });
+    });
+  }
+
+  void _finishStoreOperation() {
+    _storeOperationTimer?.cancel();
+    _storeOperationTimer = null;
   }
 
   Future<void> _loadStoreProducts() async {
@@ -131,12 +154,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
       if (purchase.status == PurchaseStatus.pending) {
-        if (mounted) setState(() => _loading = true);
+        if (mounted) {
+          setState(() => _loading = true);
+          _startStoreOperationTimeout(
+            message:
+                'The App Store is still processing this purchase. You can try again shortly.',
+          );
+        }
         continue;
       }
 
       if (purchase.status == PurchaseStatus.error) {
         if (mounted) {
+          _finishStoreOperation();
           setState(() {
             _loading = false;
             _error = purchase.error == null
@@ -149,11 +179,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
         try {
-          await _activateApplePurchase(purchase);
+          await _activateApplePurchase(purchase)
+              .timeout(const Duration(seconds: 8));
         } catch (_) {
           final tier = PurchaseService.tierForProductId(purchase.productID);
           if (tier != null) {
             _markApplePurchaseActive(tier);
+          } else if (mounted) {
+            _finishStoreOperation();
+            setState(() {
+              _loading = false;
+              _error = 'Could not activate purchase for this account.';
+            });
           }
         }
       }
@@ -194,6 +231,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (!mounted) return;
 
     if (response.isSuccess && response.data != null) {
+      _finishStoreOperation();
       context.read<AppState>().setUser(User.fromJson(response.data!));
       setState(() {
         _loading = false;
@@ -211,6 +249,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   void _markApplePurchaseActive(String tier) {
     if (!mounted) return;
+    _finishStoreOperation();
     final app = context.read<AppState>();
     final user = app.user;
     if (user != null) {
@@ -349,9 +388,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _loading = true;
       _error = null;
     });
+    _startStoreOperationTimeout();
 
     final started = await _purchaseService.buy(product);
     if (!started && mounted) {
+      _finishStoreOperation();
       setState(() {
         _loading = false;
         _error = 'Could not start App Store purchase. Please try again.';
@@ -400,10 +441,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _loading = true;
       _error = null;
     });
+    _startStoreOperationTimeout(
+      message:
+          'No active App Store subscription was found yet. You can try Restore Purchases again shortly.',
+    );
     try {
       await _purchaseService.restorePurchases();
     } catch (e) {
       if (!mounted) return;
+      _finishStoreOperation();
       setState(() {
         _loading = false;
         _error = _storeMessageFor(e);
