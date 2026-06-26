@@ -37,9 +37,20 @@ jobs:
             > power6_mobile/build/web/deploy-version.json
 
       - name: Deploy to Firebase Hosting (live)
+        id: firebase_deploy
+        continue-on-error: true
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+
+      - name: Verify Firebase Hosting deployment
+        run: |
+          deployed_stamp="$(
+            curl -fsSL \
+              "https://power6-app-30bd8.web.app/deploy-version.json?run=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          )"
+          echo "$deployed_stamp"
+          echo "$deployed_stamp" | grep -F "\"sha\":\"$GITHUB_SHA\""
