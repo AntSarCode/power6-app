@@ -24,7 +24,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<String> _priorities = <String>['Low', 'Normal', 'High'];
   String _priority = 'Normal';
-  bool _streakBound = false;
+  bool _streakBound = true;
   bool _isSaving = false;
   String? _error;
 
@@ -79,7 +79,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
         _isSaving = false;
         _controller.clear();
         _priority = 'Normal';
-        _streakBound = false;
+        _streakBound = true;
       });
     } catch (e) {
       if (!mounted) return;
@@ -119,6 +119,8 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final appState = context.watch<AppState>();
+    final remainingSlots = (6 - appState.todayCreatedCount).clamp(0, 6);
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -191,9 +193,13 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'You can create up to six new tasks per calendar day. Incomplete tasks stay in review until you finish them.',
+                                remainingSlots == 0
+                                    ? 'Your six focus slots are full for today. Review or complete tasks to keep momentum moving.'
+                                    : 'Fill one of today\'s six focus slots. Streak-bound is on by default so completed tasks build consistency.',
                                 style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                               ),
+                              const SizedBox(height: 12),
+                              _SlotMeter(filled: appState.todayCreatedCount.clamp(0, 6)),
                               const SizedBox(height: 16),
                               TextField(
                                 controller: _controller,
@@ -248,7 +254,7 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                               SizedBox(
                                 height: 48,
                                 child: ElevatedButton(
-                                  onPressed: _isSaving ? null : _saveTask,
+                                  onPressed: _isSaving || remainingSlots == 0 ? null : _saveTask,
                                   style: ElevatedButton.styleFrom(
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                     elevation: 0,
@@ -263,9 +269,9 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
                                             height: 20,
                                             child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                                           )
-                                        : const Text(
+                                        : Text(
                                             key: ValueKey('text'),
-                                            'Save Task',
+                                            remainingSlots == 0 ? 'Six Slots Full' : 'Save Task',
                                             style: TextStyle(fontWeight: FontWeight.bold),
                                           ),
                                   ),
@@ -304,6 +310,33 @@ class _TaskInputScreenState extends State<TaskInputScreen> {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Color.fromRGBO(100, 255, 218, 0.9), width: 1.2),
       ),
+    );
+  }
+}
+
+class _SlotMeter extends StatelessWidget {
+  final int filled;
+
+  const _SlotMeter({required this.filled});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List<Widget>.generate(6, (index) {
+        final active = index < filled;
+        return Expanded(
+          child: Container(
+            height: 8,
+            margin: EdgeInsets.only(right: index == 5 ? 0 : 6),
+            decoration: BoxDecoration(
+              color: active
+                  ? const Color.fromRGBO(100, 255, 218, 0.9)
+                  : const Color.fromRGBO(255, 255, 255, 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }),
     );
   }
 }

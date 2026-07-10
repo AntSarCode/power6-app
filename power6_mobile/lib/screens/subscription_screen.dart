@@ -601,11 +601,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_shouldShowPlan('plus')) ...[
                     _PlanCard(
                       title: 'PLUS',
-                      subtitle: 'Access streak tracker and timeline',
+                      subtitle: 'Build consistency with streaks and badges',
                       bullets: const [
                         'Daily streak tracker',
-                        'Task timeline view',
-                        'Priority badges and glow UI',
+                        'Badge progression and detail',
+                        'Priority planning prompts',
                       ],
                       isCurrent: currentTier == 'plus',
                       accent: const Color.fromRGBO(100, 255, 218, 1),
@@ -637,10 +637,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_shouldShowPlan('elite'))
                     _PlanCard(
                       title: 'ELITE',
-                      subtitle: 'Everything Pro offers + group features',
+                      subtitle: 'Everything Pro offers + future team features',
                       bullets: const [
                         'Everything in Pro',
-                        'Group budgets & leaderboards',
+                        'Team accountability roadmap',
                         'Early feature access',
                       ],
                       isCurrent: currentTier == 'elite',

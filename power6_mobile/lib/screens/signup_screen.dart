@@ -58,7 +58,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
       if (!mounted) return;
       if (res.isSuccess) {
-        Navigator.of(context).pushReplacementNamed('/');
+        Navigator.of(context).pushReplacementNamed('/onboarding');
       } else {
         setState(() => _error = res.error ?? 'Sign up failed');
       }

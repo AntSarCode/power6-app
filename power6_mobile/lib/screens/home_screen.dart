@@ -1,22 +1,32 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../config/api_constants.dart';
+import '../models/task.dart';
 import '../services/api_service.dart';
+import '../services/task_service.dart';
 import '../state/app_state.dart';
-import '../widgets/top_right_menu.dart';
-import '../widgets/task_card.dart';
+import '../ui/launch_ui.dart';
 import '../widgets/feedback/modal.dart';
+import '../widgets/task_card.dart';
+import '../widgets/top_right_menu.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const String _appVersion = '1.0';
-  static const String _graphicsBase = 'assets/graphics';
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-  Future<void> _submitFeedback(BuildContext context, FeedbackReportPayload payload) async {
+class _HomeScreenState extends State<HomeScreen> {
+  static const String _graphicsBase = 'assets/graphics';
+  final TaskService _taskService = TaskService();
+  bool _busy = false;
+
+  Future<void> _submitFeedback(
+    BuildContext context,
+    FeedbackReportPayload payload,
+  ) async {
     final appState = context.read<AppState>();
     final token = appState.accessToken ?? '';
 
@@ -31,14 +41,187 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _quickAddTask() async {
+    final controller = TextEditingController();
+    final app = context.read<AppState>();
+    final remaining = (6 - app.todayCreatedCount).clamp(0, 6);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(remaining > 0 ? 'Add one of your six' : 'Daily limit reached'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 2,
+          textInputAction: TextInputAction.done,
+          decoration: InputDecoration(
+            hintText: remaining > 0 ? 'What matters next?' : 'You can add more tomorrow.',
+          ),
+          onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: remaining == 0
+                ? null
+                : () => Navigator.of(context).pop(controller.text.trim()),
+            icon: const Icon(Icons.add),
+            label: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || title.isEmpty) return;
+
+    await _runTaskMutation(() async {
+      final token = app.accessToken ?? '';
+      final response = await _taskService.createTask(
+        title: title,
+        priority: 1,
+        streakBound: true,
+        token: token,
+      );
+      if (!response.isSuccess) {
+        throw Exception(response.error ?? 'Unable to add task.');
+      }
+      await app.syncTasks();
+      await app.loadStreak();
+    }, success: 'Task added.');
+  }
+
+  Future<void> _completeNextTask(Task task) async {
+    final app = context.read<AppState>();
+    final index = app.tasks.indexWhere((candidate) => candidate.id == task.id);
+    if (index == -1) return;
+    var success = 'Nice. Next task completed.';
+    await _runTaskMutation(() async {
+      await app.toggleTaskCompletion(index, force: true);
+      if (app.todayEarnedStreak) {
+        success = 'All six are complete. I finished my Power6 today.';
+      } else if (app.currentStreak >= 3) {
+        success = 'Task complete. Your streak is building.';
+      }
+    }, success: () => success);
+  }
+
+  Future<void> _editTask(Task task) async {
+    final controller = TextEditingController(text: task.title);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit task'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 2,
+          decoration: const InputDecoration(hintText: 'Task title'),
+          onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (title == null || title.isEmpty || title == task.title) return;
+
+    await _runTaskMutation(() async {
+      final app = context.read<AppState>();
+      final response = await ApiService(ApiConstants.baseUrl).patch(
+        ApiConstants.taskById(task.id.toString()),
+        token: app.accessToken ?? '',
+        body: <String, dynamic>{'title': title},
+      );
+      if (!response.isSuccess) {
+        throw Exception(response.error ?? 'Unable to edit task.');
+      }
+      await app.syncTasks();
+    }, success: 'Task updated.');
+  }
+
+  Future<void> _deleteTask(Task task) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete task?'),
+        content: Text('"${task.title}" will be removed from today.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    await _runTaskMutation(() async {
+      final app = context.read<AppState>();
+      final response = await ApiService(ApiConstants.baseUrl).delete(
+        ApiConstants.taskById(task.id.toString()),
+        token: app.accessToken ?? '',
+      );
+      if (!response.isSuccess) {
+        throw Exception(response.error ?? 'Unable to delete task.');
+      }
+      await app.syncTasks();
+      await app.loadStreak();
+    }, success: 'Task deleted.');
+  }
+
+  Future<void> _runTaskMutation(
+    Future<void> Function() action, {
+    required Object success,
+  }) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (!mounted) return;
+      final message = success is String
+          ? success
+          : (success as String Function()).call();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final tasks = appState.todayTasks;
-    final user = appState.user?.username ?? 'User';
+    final activeTasks = appState.todayActiveTasks;
+    final user = appState.user?.username ?? 'there';
     final streak = appState.currentStreak;
     final completedToday = appState.todayCompletedCount;
     final totalToday = appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
+    final remainingSlots = (6 - appState.todayCreatedCount).clamp(0, 6);
+    final nextTask = activeTasks.isEmpty ? null : activeTasks.first;
     final cs = Theme.of(context).colorScheme;
 
     return GestureDetector(
@@ -47,470 +230,321 @@ class HomeScreen extends StatelessWidget {
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leadingWidth: 56,
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: Center(
-              child: Power6TopRightMenu(
-                onSubmitFeedback: (payload) => _submitFeedback(context, payload),
-              ),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leadingWidth: 56,
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: Image.asset(
+              '$_graphicsBase/power6_logo.png',
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
           ),
-        ],
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16.0),
-          child: Image.asset(
-            '$_graphicsBase/power6_logo.png',
-            height: 28,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-          ),
-        ),
-        title: const SizedBox.shrink(),
-        centerTitle: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: <Widget>[
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  Color(0xFF0A0F12),
-                  Color.fromRGBO(15, 31, 36, 0.95),
-                  Color(0xFF0A0F12),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            top: -130,
-            right: -70,
-            child: SizedBox(
-              width: 300,
-              height: 300,
-              child: ClipOval(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: cs.secondary.withOpacity(0.32)),
+          title: const SizedBox.shrink(),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: Center(
+                child: Power6TopRightMenu(
+                  onSubmitFeedback: (payload) => _submitFeedback(context, payload),
                 ),
               ),
             ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+          ],
+        ),
+        body: LaunchBackground(
+          child: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await appState.syncTasks();
+                await appState.loadStreak();
+              },
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: <Widget>[
-                  const Text(
-                    'Power6',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
                   Text(
-                    'Dashboard',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                    'Choose the six things that matter today.',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: cs.onSurface,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hi $user. Plan lightly, finish deliberately, and let Power6 carry the momentum.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                   ),
                   const SizedBox(height: 16),
-                  _GlassPanel(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget>[
-                              Icon(Icons.local_fire_department_rounded, size: 28, color: cs.secondary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Welcome, $user',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: cs.surface.withOpacity(0.18),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: cs.outlineVariant.withOpacity(0.40)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Icon(Icons.local_fire_department_rounded, size: 16, color: cs.secondary),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Streak: $streak',
-                                      style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          _DailyProgressBar(completed: completedToday, total: totalToday),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: <Widget>[
-                              _SummaryChip(icon: Icons.check_circle_outline, label: '$completedToday completed'),
-                              _SummaryChip(icon: Icons.list_alt_outlined, label: '${appState.todayActiveCount} remaining'),
-                              _SummaryChip(
-                                icon: appState.todayEarnedStreak ? Icons.emoji_events_outlined : Icons.flag_outlined,
-                                label: appState.todayEarnedStreak ? '6-task milestone reached' : '${appState.completedCountToday}/6 streak tasks',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: _MetricCard(
-                                  icon: Icons.local_fire_department_rounded,
-                                  title: 'Current Streak',
-                                  value: '$streak days',
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _MetricCard(
-                                  icon: Icons.today_outlined,
-                                  title: 'Today Summary',
-                                  value: '$completedToday / $totalToday complete',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (appState.todayEarnedStreak)
-                    _GlassPanel(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  GlassPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Row(
                           children: <Widget>[
-                            Icon(Icons.workspace_premium_outlined, color: cs.secondary),
-                            const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                'Badge milestone unlocked: you completed all 6 streak-bound tasks today.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.85)),
+                              child: ActionMetric(
+                                icon: Icons.check_circle_outline,
+                                label: 'Today',
+                                value: '$completedToday / $totalToday',
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ActionMetric(
+                                icon: Icons.add_task_outlined,
+                                label: 'Open slots',
+                                value: '$remainingSlots left',
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ActionMetric(
+                                icon: Icons.local_fire_department_rounded,
+                                label: 'Streak',
+                                value: '$streak days',
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 14),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            minHeight: 9,
+                            value: totalToday == 0
+                                ? 0
+                                : (completedToday / totalToday).clamp(0, 1).toDouble(),
+                            backgroundColor: cs.surface.withAlpha(31),
+                            valueColor: AlwaysStoppedAnimation<Color>(cs.secondary),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: <Widget>[
+                            FilledButton.icon(
+                              onPressed: _busy || remainingSlots == 0 ? null : _quickAddTask,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Quick add'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: nextTask == null || _busy
+                                  ? null
+                                  : () => _completeNextTask(nextTask),
+                              icon: const Icon(Icons.done),
+                              label: const Text('Complete next'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context).pushNamed('/upgrade'),
+                              icon: const Icon(Icons.workspace_premium_outlined),
+                              label: const Text('Upgrade'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  if (appState.todayEarnedStreak) const SizedBox(height: 16),
-                  const _GlassPanel(
-                    child: _AboutSection(version: _appVersion),
                   ),
                   const SizedBox(height: 16),
+                  GlassPanel(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Icon(Icons.flag_outlined, color: cs.secondary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                nextTask == null ? 'You are clear for now.' : 'Next up',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                nextTask == null
+                                    ? 'Add up to six priority tasks, or review anything still open from earlier.'
+                                    : nextTask.title,
+                                style: TextStyle(color: cs.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SixSlotPlanner(tasks: tasks, onQuickAdd: _quickAddTask),
+                  const SizedBox(height: 18),
                   Text(
                     "Today's Tasks",
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurface,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   if (tasks.isEmpty)
-                    _GlassPanel(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Icon(Icons.tips_and_updates_outlined, color: cs.secondary),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                "No tasks yet. Add up to six and we'll help you prioritize. Unfinished items stay visible so review, streak, and dashboard counts stay aligned.",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
-                              ),
+                    GlassPanel(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Icon(Icons.tips_and_updates_outlined, color: cs.secondary),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Start with one task. Power6 is intentionally capped at six so your day stays focused.',
+                              style: TextStyle(color: cs.onSurfaceVariant),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     )
                   else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: tasks.length,
-                      itemBuilder: (context, index) {
-                        final task = tasks[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _GlassPanel(
-                            child: TaskCard(
-                              title: task.title,
-                              description: task.notes,
-                              isCompleted: task.completed,
-                              onTap: null,
-                            ),
+                    ...tasks.map(
+                      (task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: GlassPanel(
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            children: <Widget>[
+                              TaskCard(
+                                title: task.title,
+                                description: task.notes,
+                                isCompleted: task.completed,
+                                onTap: null,
+                              ),
+                              const Divider(height: 1),
+                              OverflowBar(
+                                alignment: MainAxisAlignment.end,
+                                spacing: 8,
+                                children: <Widget>[
+                                  TextButton.icon(
+                                    onPressed: _busy ? null : () => _editTask(task),
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    label: const Text('Edit'),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _busy ? null : () => _deleteTask(task),
+                                    icon: const Icon(Icons.delete_outline, size: 18),
+                                    label: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
-        ],
-      ),
-      ),
-    );
-  }
-}
-
-class _DailyProgressBar extends StatelessWidget {
-  final int completed;
-  final int total;
-  const _DailyProgressBar({required this.completed, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final pct = total == 0 ? 0.0 : (completed / total).clamp(0, 1).toDouble();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: LinearProgressIndicator(
-            minHeight: 8,
-            value: pct,
-            backgroundColor: cs.surface.withOpacity(0.12),
-            valueColor: AlwaysStoppedAnimation<Color>(cs.secondary),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '$completed of $total tasks',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.70)),
-        ),
-      ],
-    );
-  }
-}
-
-
-class _MetricCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const _MetricCard({required this.icon, required this.title, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cs.surface.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.30)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(icon, color: cs.secondary),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _SummaryChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surface.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 16, color: cs.secondary),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlassPanel extends StatelessWidget {
-  final Widget child;
-  const _GlassPanel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cs.surface.withOpacity(0.12),
-            border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: child,
         ),
       ),
     );
   }
 }
 
-class _AboutSection extends StatelessWidget {
-  final String version;
-  const _AboutSection({required this.version});
+class _SixSlotPlanner extends StatelessWidget {
+  final List<Task> tasks;
+  final VoidCallback onQuickAdd;
+
+  const _SixSlotPlanner({required this.tasks, required this.onQuickAdd});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return GlassPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              Icon(Icons.info_outline, color: cs.secondary),
+              Icon(Icons.view_week_outlined, color: cs.secondary),
               const SizedBox(width: 8),
-              Text(
-                'About (v$version)',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface),
+              Expanded(
+                child: Text(
+                  'Six-slot plan',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: tasks.length >= 6 ? null : onQuickAdd,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add'),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Power6 is designed around behavioral science to make consistency feel natural:',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
-          ),
-          const SizedBox(height: 8),
-          const _Bullet('Six-task focus limits cognitive load and reduces planning friction.'),
-          const _Bullet('Priority ordering channels effort toward the most meaningful work first.'),
-          const _Bullet('Automatic rollover preserves momentum—unfinished items are carried into the next day without guilt.'),
-          const _Bullet('Streak counting rewards consistency and builds identity as a finisher.'),
-          const _Bullet('Badges create milestone dopamine hits that reinforce long-term habits.'),
-          const SizedBox(height: 8),
-          Text(
-            'Edition: v$version',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.60), fontStyle: FontStyle.italic),
-          ),
+          for (var i = 0; i < 6; i++)
+            Padding(
+              padding: EdgeInsets.only(bottom: i == 5 ? 0 : 8),
+              child: _SlotRow(index: i, task: i < tasks.length ? tasks[i] : null),
+            ),
         ],
       ),
     );
   }
 }
 
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
+class _SlotRow extends StatelessWidget {
+  final int index;
+  final Task? task;
+
+  const _SlotRow({required this.index, required this.task});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    final filled = task != null;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: filled ? cs.surface.withAlpha(28) : cs.surface.withAlpha(15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: filled ? cs.secondary.withAlpha(90) : cs.outlineVariant.withAlpha(70),
+        ),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Icon(Icons.check_circle_outline, size: 16, color: cs.secondary),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
+          SizedBox(
+            width: 26,
             child: Text(
-              text,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: cs.onSurfaceVariant.withOpacity(0.80)),
+              '${index + 1}',
+              style: TextStyle(
+                color: filled ? cs.secondary : cs.onSurfaceVariant,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
+          Expanded(
+            child: Text(
+              task?.title ?? 'Open focus slot',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: filled ? cs.onSurface : cs.onSurfaceVariant,
+                decoration: task?.completed == true ? TextDecoration.lineThrough : null,
+                fontWeight: filled ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+          if (task?.streakBound == true)
+            Icon(Icons.local_fire_department_rounded, color: cs.secondary, size: 18),
         ],
       ),
     );
   }
 }
-
-

@@ -79,9 +79,50 @@ class PowerBadgeScreen extends StatelessWidget {
               itemBuilder: (context, i) => _BadgeTile(
                 name: _badges[i],
                 achieved: unlocked && i == 0,
+                onTap: () => _showBadgeDetail(
+                  context,
+                  name: _badges[i],
+                  achieved: unlocked && i == 0,
+                ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showBadgeDetail(
+    BuildContext context, {
+    required String name,
+    required bool achieved,
+  }) {
+    final label = name.replaceAll('_', ' ');
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(label),
+        content: Text(
+          achieved
+              ? 'Unlocked today. Keep completing your six focus tasks to maintain momentum.'
+              : 'Locked for now. Complete streak-bound tasks and keep returning daily to unlock more badges.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          if (achieved)
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Share text: I finished my Power6 today.')),
+                );
+              },
+              icon: const Icon(Icons.ios_share_outlined),
+              label: const Text('Share'),
+            ),
         ],
       ),
     );
@@ -91,56 +132,66 @@ class PowerBadgeScreen extends StatelessWidget {
 class _BadgeTile extends StatelessWidget {
   final String name;
   final bool achieved;
-  const _BadgeTile({required this.name, this.achieved = false});
+  final VoidCallback onTap;
+
+  const _BadgeTile({
+    required this.name,
+    required this.onTap,
+    this.achieved = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final asset = 'assets/badges/' + name + '.png';
-    return ClipRRect(
+    final asset = 'assets/badges/$name.png';
+    return InkWell(
       borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: achieved ? const Color.fromRGBO(10, 58, 49, 0.55) : const Color.fromRGBO(0, 0, 0, 0.35),
-            border: Border.all(
-              color: achieved ? const Color.fromRGBO(100, 255, 218, 0.85) : const Color.fromRGBO(0, 150, 136, 0.25),
-              width: achieved ? 1.4 : 1,
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: achieved ? const Color.fromRGBO(10, 58, 49, 0.55) : const Color.fromRGBO(0, 0, 0, 0.35),
+              border: Border.all(
+                color: achieved ? const Color.fromRGBO(100, 255, 218, 0.85) : const Color.fromRGBO(0, 150, 136, 0.25),
+                width: achieved ? 1.4 : 1,
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Image.asset(
-                    asset,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events_outlined, size: 40, color: Colors.white38),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Image.asset(
+                      asset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events_outlined, size: 40, color: Colors.white38),
+                    ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10, left: 6, right: 6),
-                child: Column(
-                  children: [
-                    Text(
-                      name.replaceAll('_', ' '),
-                      style: TextStyle(fontSize: 12, color: achieved ? Colors.white : Colors.white70),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      achieved ? 'Unlocked' : 'Locked',
-                      style: TextStyle(fontSize: 10, color: achieved ? const Color.fromRGBO(100, 255, 218, 0.9) : Colors.white38),
-                    ),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10, left: 6, right: 6),
+                  child: Column(
+                    children: [
+                      Text(
+                        name.replaceAll('_', ' '),
+                        style: TextStyle(fontSize: 12, color: achieved ? Colors.white : Colors.white70),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        achieved ? 'Unlocked' : 'Locked',
+                        style: TextStyle(fontSize: 10, color: achieved ? const Color.fromRGBO(100, 255, 218, 0.9) : Colors.white38),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

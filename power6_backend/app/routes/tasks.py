@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import csv
 from datetime import date, datetime, timedelta, timezone
+from io import StringIO
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import Date, and_, or_, cast as sa_cast
 from sqlalchemy.orm import Session
 
@@ -30,6 +33,15 @@ ALLOWED_ORDER_FIELDS = {
     "completed_at",
     "reviewed_at",
     "streak_bound",
+}
+
+TIER_PRIORITY = {
+    "free": 1,
+    "expired": 1,
+    "plus": 2,
+    "pro": 3,
+    "elite": 4,
+    "admin": 5,
 }
 
 
@@ -60,6 +72,17 @@ def _coerce_user_id(current_user: User) -> int:
         return int(digits)
 
 
+def _require_min_tier(current_user: User, required: str) -> None:
+    tier = str(getattr(current_user, "tier", "free") or "free").strip().lower()
+    if bool(getattr(current_user, "is_admin", False)):
+        tier = "admin"
+    if TIER_PRIORITY.get(tier, 0) < TIER_PRIORITY[required]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Power6 {required.title()} is required for this feature.",
+        )
+
+
 def _compute_day_key(task: TaskModel) -> str:
     dt = task.scheduled_for or task.created_at
     if dt is None:
@@ -81,6 +104,32 @@ def _to_task_read(task: TaskModel) -> TaskRead:
         reviewed_at=task.reviewed_at,
         day_key=_compute_day_key(task),
         streak_bound=bool(task.streak_bound),
+    )
+
+
+def _history_query(
+    db: Session,
+    uid: int,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+):
+    today = date.today()
+    from_date = from_date or (today - timedelta(days=30))
+    to_date = to_date or today
+
+    return (
+        db.query(TaskModel)
+        .filter(
+            TaskModel.user_id == uid,
+            TaskModel.completed.is_(True),
+            TaskModel.completed_at >= datetime.combine(
+                from_date, datetime.min.time(), tzinfo=timezone.utc
+            ),
+            TaskModel.completed_at <= datetime.combine(
+                to_date, datetime.max.time(), tzinfo=timezone.utc
+            ),
+        )
+        .order_by(TaskModel.completed_at.desc())
     )
 
 
@@ -237,26 +286,107 @@ def get_history(
     current_user: User = Depends(get_current_user),
 ):
     uid = _coerce_user_id(current_user)
-    today = date.today()
-    from_date = from_date or (today - timedelta(days=30))
-    to_date = to_date or today
-
-    tasks: List[Any] = (
-        db.query(TaskModel)
-        .filter(
-            TaskModel.user_id == uid,
-            TaskModel.completed.is_(True),
-            TaskModel.completed_at >= datetime.combine(
-                from_date, datetime.min.time(), tzinfo=timezone.utc
-            ),
-            TaskModel.completed_at <= datetime.combine(
-                to_date, datetime.max.time(), tzinfo=timezone.utc
-            ),
-        )
-        .order_by(TaskModel.completed_at.desc())
-        .all()
-    )
+    tasks: List[Any] = _history_query(db, uid, from_date, to_date).all()
     return [_to_task_read(t) for t in tasks]
+
+
+@router.get("/analytics")
+def get_task_analytics(
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_min_tier(current_user, "pro")
+    uid = _coerce_user_id(current_user)
+    tasks: List[Any] = _history_query(db, uid, from_date, to_date).all()
+
+    if not tasks:
+        return {
+            "completed_tasks": 0,
+            "streak_bound_completed": 0,
+            "completion_rate": 0,
+            "best_day": None,
+            "recent_trend": [],
+            "message": "No completed tasks in this period yet.",
+        }
+
+    by_day: dict[str, int] = {}
+    streak_bound = 0
+    for task in tasks:
+        when = task.completed_at or task.created_at
+        day_key = when.astimezone(timezone.utc).date().isoformat()
+        by_day[day_key] = by_day.get(day_key, 0) + 1
+        if bool(task.streak_bound):
+            streak_bound += 1
+
+    best_day_key, best_day_count = max(by_day.items(), key=lambda item: item[1])
+    recent_trend = [
+        {"day": day, "completed": count}
+        for day, count in sorted(by_day.items(), reverse=True)[:7]
+    ]
+
+    days = max(len(by_day), 1)
+    completion_rate = round(
+        min(sum(by_day.values()) / (days * 6), 1.0) * 100,
+        1,
+    )
+
+    return {
+        "completed_tasks": len(tasks),
+        "streak_bound_completed": streak_bound,
+        "completion_rate": completion_rate,
+        "best_day": {"day": best_day_key, "completed": best_day_count},
+        "recent_trend": recent_trend,
+    }
+
+
+@router.get("/export.csv")
+def export_task_history_csv(
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_min_tier(current_user, "pro")
+    uid = _coerce_user_id(current_user)
+    tasks: List[Any] = _history_query(db, uid, from_date, to_date).all()
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "id",
+            "title",
+            "notes",
+            "priority",
+            "streak_bound",
+            "created_at",
+            "completed_at",
+            "reviewed_at",
+        ]
+    )
+    for task in tasks:
+        writer.writerow(
+            [
+                task.id,
+                task.title,
+                task.notes or "",
+                task.priority,
+                bool(task.streak_bound),
+                task.created_at.isoformat() if task.created_at else "",
+                task.completed_at.isoformat() if task.completed_at else "",
+                task.reviewed_at.isoformat() if task.reviewed_at else "",
+            ]
+        )
+
+    buffer.seek(0)
+    headers = {"Content-Disposition": 'attachment; filename="power6-task-history.csv"'}
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers=headers,
+    )
 
 
 @router.post("/", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
@@ -359,4 +489,3 @@ def delete_task(
     db.delete(task)
     db.commit()
     return None
-

@@ -26,6 +26,8 @@ class ApiConstants {
   static const String tasks = '/tasks/'; // POST + list
   static const String activeTasks = '/tasks/active';
   static const String taskHistory = '/tasks/history';
+  static const String taskAnalytics = '/tasks/analytics';
+  static const String taskExportCsv = '/tasks/export.csv';
   static String taskById(String id) => '/tasks/$id';
   static String taskToggle(String id) => '/tasks/$id/toggle';
 

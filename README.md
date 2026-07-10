@@ -23,7 +23,7 @@ A focused, six-task productivity app that helps you finish the right work every 
 - **Daily Task Input**: add up to 6 priority-ranked tasks
 - **Review & Complete**: check off and roll unfinished work forward
 - **Streaks**: consecutive-day completion tracker
-- **Timeline** *(Plus/Pro+)*: browse past days
+- **Timeline** *(Pro+)*: browse past days
 - **Badges**: milestone rewards (now visible with PNG assets)
 - **Subscriptions**: Free / Plus / Pro / Elite tiers
 - **Admin** *(Elite/Admin)*: badge + user management

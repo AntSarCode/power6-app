@@ -16,6 +16,7 @@ import 'package:power6_mobile/screens/timeline_screen.dart';
 import 'package:power6_mobile/screens/power_badge_screen.dart';
 import 'package:power6_mobile/screens/subscription_screen.dart' as subs;
 import 'package:power6_mobile/screens/account_settings_screen.dart';
+import 'package:power6_mobile/screens/onboarding_screen.dart';
 import 'package:power6_mobile/navigation/main_nav.dart';
 import 'package:power6_mobile/models/user.dart';
 
@@ -65,6 +66,7 @@ class Power6App extends StatelessWidget {
           '/timeline': (ctx) => const TimelineScreen(),
           '/badges': (ctx) => const PowerBadgeScreen(),
           '/account': (ctx) => const AccountSettingsScreen(),
+          '/onboarding': (ctx) => const OnboardingScreen(),
           '/upgrade': (ctx) => const subs.SubscriptionScreen(),
           '/subscribe': (ctx) => const subs.SubscriptionScreen(),
         },
