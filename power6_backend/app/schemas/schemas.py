@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, AliasChoices, field_validator
 
@@ -137,6 +137,23 @@ class TaskRead(TaskBase):
     reviewed_at: Optional[datetime] = None
     # Computed server-side; useful for daily grouping in UI
     day_key: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class EventCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    source: str = Field(default="mobile", max_length=40)
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class EventRead(BaseModel):
+    id: int
+    name: str
+    source: str
+    tier: Optional[str] = None
+    properties: Optional[dict[str, Any]] = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

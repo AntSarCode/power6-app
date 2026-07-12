@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/api_constants.dart';
 import '../models/task.dart';
+import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/task_service.dart';
 import '../state/app_state.dart';
@@ -21,7 +22,31 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const String _graphicsBase = 'assets/graphics';
   final TaskService _taskService = TaskService();
+  final AnalyticsService _analytics = AnalyticsService();
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final app = context.read<AppState>();
+      _analytics.track(
+        'dashboard_viewed',
+        token: app.accessToken,
+        properties: <String, dynamic>{
+          'completed_today': app.todayCompletedCount,
+          'today_task_count': app.todayTaskCount,
+        },
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _analytics.dispose();
+    super.dispose();
+  }
 
   Future<void> _submitFeedback(
     BuildContext context,
@@ -48,14 +73,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(remaining > 0 ? 'Add one of your six' : 'Daily limit reached'),
+        title:
+            Text(remaining > 0 ? 'Add one of your six' : 'Daily limit reached'),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLines: 2,
           textInputAction: TextInputAction.done,
           decoration: InputDecoration(
-            hintText: remaining > 0 ? 'What matters next?' : 'You can add more tomorrow.',
+            hintText: remaining > 0
+                ? 'What matters next?'
+                : 'You can add more tomorrow.',
           ),
           onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
         ),
@@ -90,6 +118,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       await app.syncTasks();
       await app.loadStreak();
+      _analytics.track(
+        'task_created',
+        token: app.accessToken,
+        properties: <String, dynamic>{
+          'count': 1,
+          'today_task_count': app.todayTaskCount,
+        },
+      );
     }, success: 'Task added.');
   }
 
@@ -105,6 +141,14 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (app.currentStreak >= 3) {
         success = 'Task complete. Your streak is building.';
       }
+      _analytics.track(
+        'task_completed',
+        token: app.accessToken,
+        properties: <String, dynamic>{
+          'completed_today': app.todayCompletedCount,
+          'today_task_count': app.todayTaskCount,
+        },
+      );
     }, success: () => success);
   }
 
@@ -195,9 +239,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await action();
       if (!mounted) return;
-      final message = success is String
-          ? success
-          : (success as String Function()).call();
+      final message =
+          success is String ? success : (success as String Function()).call();
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
@@ -219,7 +262,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = appState.user?.username ?? 'there';
     final streak = appState.currentStreak;
     final completedToday = appState.todayCompletedCount;
-    final totalToday = appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
+    final totalToday =
+        appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
     final remainingSlots = (6 - appState.todayCreatedCount).clamp(0, 6);
     final nextTask = activeTasks.isEmpty ? null : activeTasks.first;
     final cs = Theme.of(context).colorScheme;
@@ -250,7 +294,8 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(right: 12.0),
               child: Center(
                 child: Power6TopRightMenu(
-                  onSubmitFeedback: (payload) => _submitFeedback(context, payload),
+                  onSubmitFeedback: (payload) =>
+                      _submitFeedback(context, payload),
                 ),
               ),
             ),
@@ -319,9 +364,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             minHeight: 9,
                             value: totalToday == 0
                                 ? 0
-                                : (completedToday / totalToday).clamp(0, 1).toDouble(),
+                                : (completedToday / totalToday)
+                                    .clamp(0, 1)
+                                    .toDouble(),
                             backgroundColor: cs.surface.withAlpha(31),
-                            valueColor: AlwaysStoppedAnimation<Color>(cs.secondary),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(cs.secondary),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -330,7 +378,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           runSpacing: 10,
                           children: <Widget>[
                             FilledButton.icon(
-                              onPressed: _busy || remainingSlots == 0 ? null : _quickAddTask,
+                              onPressed: _busy || remainingSlots == 0
+                                  ? null
+                                  : _quickAddTask,
                               icon: const Icon(Icons.add),
                               label: const Text('Quick add'),
                             ),
@@ -342,8 +392,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               label: const Text('Complete next'),
                             ),
                             OutlinedButton.icon(
-                              onPressed: () => Navigator.of(context).pushNamed('/upgrade'),
-                              icon: const Icon(Icons.workspace_premium_outlined),
+                              onPressed: () =>
+                                  Navigator.of(context).pushNamed('/upgrade'),
+                              icon:
+                                  const Icon(Icons.workspace_premium_outlined),
                               label: const Text('Upgrade'),
                             ),
                           ],
@@ -363,8 +415,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Text(
-                                nextTask == null ? 'You are clear for now.' : 'Next up',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                nextTask == null
+                                    ? 'You are clear for now.'
+                                    : 'Next up',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
                                       fontWeight: FontWeight.w800,
                                     ),
                               ),
@@ -397,7 +454,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Icon(Icons.tips_and_updates_outlined, color: cs.secondary),
+                          Icon(Icons.tips_and_updates_outlined,
+                              color: cs.secondary),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -428,13 +486,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 spacing: 8,
                                 children: <Widget>[
                                   TextButton.icon(
-                                    onPressed: _busy ? null : () => _editTask(task),
-                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    onPressed:
+                                        _busy ? null : () => _editTask(task),
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18),
                                     label: const Text('Edit'),
                                   ),
                                   TextButton.icon(
-                                    onPressed: _busy ? null : () => _deleteTask(task),
-                                    icon: const Icon(Icons.delete_outline, size: 18),
+                                    onPressed:
+                                        _busy ? null : () => _deleteTask(task),
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18),
                                     label: const Text('Delete'),
                                   ),
                                 ],
@@ -490,7 +552,8 @@ class _SixSlotPlanner extends StatelessWidget {
           for (var i = 0; i < 6; i++)
             Padding(
               padding: EdgeInsets.only(bottom: i == 5 ? 0 : 8),
-              child: _SlotRow(index: i, task: i < tasks.length ? tasks[i] : null),
+              child:
+                  _SlotRow(index: i, task: i < tasks.length ? tasks[i] : null),
             ),
         ],
       ),
@@ -515,7 +578,9 @@ class _SlotRow extends StatelessWidget {
         color: filled ? cs.surface.withAlpha(28) : cs.surface.withAlpha(15),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: filled ? cs.secondary.withAlpha(90) : cs.outlineVariant.withAlpha(70),
+          color: filled
+              ? cs.secondary.withAlpha(90)
+              : cs.outlineVariant.withAlpha(70),
         ),
       ),
       child: Row(
@@ -536,13 +601,15 @@ class _SlotRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: filled ? cs.onSurface : cs.onSurfaceVariant,
-                decoration: task?.completed == true ? TextDecoration.lineThrough : null,
+                decoration:
+                    task?.completed == true ? TextDecoration.lineThrough : null,
                 fontWeight: filled ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
           if (task?.streakBound == true)
-            Icon(Icons.local_fire_department_rounded, color: cs.secondary, size: 18),
+            Icon(Icons.local_fire_department_rounded,
+                color: cs.secondary, size: 18),
         ],
       ),
     );

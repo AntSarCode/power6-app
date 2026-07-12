@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Boolean,
     CheckConstraint,
+    JSON,
     Text,
     text,
     Index,
@@ -33,6 +34,7 @@ class User(Base):
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete")
     user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
+    events = relationship("UserEvent", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r}>"
@@ -127,3 +129,26 @@ class AdminMessage(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<AdminMessage id={self.id} subject={self.subject!r} sender_id={self.sender_id}>"
+
+
+class UserEvent(Base):
+    __tablename__ = "user_events"
+
+    __table_args__ = (
+        Index("ix_user_events_user_created", "user_id", "created_at"),
+        Index("ix_user_events_name_created", "name", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    source = Column(String, nullable=False, server_default="mobile")
+    tier = Column(String, nullable=True)
+    properties = Column(JSON, nullable=True)
+    user_agent = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user = relationship("User", back_populates="events")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<UserEvent id={self.id} name={self.name!r} user_id={self.user_id}>"

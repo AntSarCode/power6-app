@@ -36,6 +36,7 @@ class ApiConstants {
   static const String badgesMe = '/badges/me';
   static const String badgesEvaluate = '/badges/evaluate';
   static const String feedback = '/feedback';
+  static const String events = '/events/';
   static const String stripeCheckout = '/stripe/create-checkout-session';
 
   static const Map<String, String> appStoreProductIds = {

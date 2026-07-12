@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config/api_constants.dart';
 import '../models/user.dart';
 import '../state/app_state.dart';
+import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/purchase_service.dart';
 
@@ -20,6 +21,7 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   final PurchaseService _purchaseService = PurchaseService();
+  final AnalyticsService _analytics = AnalyticsService();
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   Timer? _storeOperationTimer;
   Map<String, ProductDetails> _products = const {};
@@ -33,6 +35,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final app = context.read<AppState>();
+      _analytics.track(
+        'subscription_screen_viewed',
+        token: app.accessToken,
+        properties: <String, dynamic>{'tier': app.user?.tier ?? 'free'},
+      );
+    });
     if (_useAppleIap) {
       _purchaseSubscription = _purchaseService.purchaseStream.listen(
         _handlePurchaseUpdates,
@@ -53,6 +64,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   void dispose() {
     _storeOperationTimer?.cancel();
     _purchaseSubscription?.cancel();
+    _analytics.dispose();
     super.dispose();
   }
 
@@ -270,6 +282,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     String interval,
   ) async {
     if (_useAppleIap) {
+      _analytics.track(
+        'checkout_started',
+        token: context.read<AppState>().accessToken,
+        properties: <String, dynamic>{'plan': tier, 'interval': interval},
+      );
       await _startApplePurchase(tier, interval);
       return;
     }
@@ -299,6 +316,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
 
     try {
+      _analytics.track(
+        'checkout_started',
+        token: token,
+        properties: <String, dynamic>{'plan': tier, 'interval': interval},
+      );
       debugPrint(
           'Stripe checkout start -> tier=$tier interval=$interval userId=$userId');
 

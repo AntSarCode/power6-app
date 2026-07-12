@@ -11,6 +11,8 @@ from .schemas import (
     TaskCreate,
     TaskUpdate,
     TaskRead,
+    EventCreate,
+    EventRead,
 )
 
 try:
@@ -45,5 +47,7 @@ __all__ = [
     "TaskCreate",
     "TaskUpdate",
     "TaskRead",
+    "EventCreate",
+    "EventRead",
     *_BADGE_EXPORTS,
 ]

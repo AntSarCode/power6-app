@@ -1,9 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../services/analytics_service.dart';
+import '../state/app_state.dart';
 import '../ui/launch_ui.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final AnalyticsService _analytics = AnalyticsService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _analytics.track(
+        'onboarding_started',
+        token: context.read<AppState>().accessToken,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _analytics.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,15 +66,22 @@ class OnboardingScreen extends StatelessWidget {
                 const GlassPanel(
                   child: Column(
                     children: <Widget>[
-                      _Step(icon: Icons.looks_one_outlined, text: 'Add up to six focus tasks.'),
-                      _Step(icon: Icons.done_all_outlined, text: 'Complete the next task before chasing more.'),
-                      _Step(icon: Icons.local_fire_department_outlined, text: 'Finish streak-bound work to build momentum.'),
+                      _Step(
+                          icon: Icons.looks_one_outlined,
+                          text: 'Add up to six focus tasks.'),
+                      _Step(
+                          icon: Icons.done_all_outlined,
+                          text: 'Complete the next task before chasing more.'),
+                      _Step(
+                          icon: Icons.local_fire_department_outlined,
+                          text: 'Finish streak-bound work to build momentum.'),
                     ],
                   ),
                 ),
                 const Spacer(),
                 FilledButton.icon(
-                  onPressed: () => Navigator.of(context).pushReplacementNamed('/home'),
+                  onPressed: () =>
+                      Navigator.of(context).pushReplacementNamed('/home'),
                   icon: const Icon(Icons.arrow_forward),
                   label: const Text('Start planning'),
                 ),

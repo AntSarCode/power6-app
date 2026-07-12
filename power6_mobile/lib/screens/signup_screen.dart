@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
+import '../state/app_state.dart';
 import 'login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -24,11 +27,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _error;
 
   late final AuthService _authService;
+  late final AnalyticsService _analytics;
 
   @override
   void initState() {
     super.initState();
     _authService = AuthService();
+    _analytics = AnalyticsService();
   }
 
   @override
@@ -37,6 +42,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
+    _analytics.dispose();
     super.dispose();
   }
 
@@ -58,6 +64,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
       if (!mounted) return;
       if (res.isSuccess) {
+        final token = res.data?['access_token']?.toString() ?? '';
+        final appState = context.read<AppState>();
+        if (token.isNotEmpty) {
+          await appState.setAuthToken(token);
+        }
+        if (!mounted) return;
+        _analytics.track(
+          'signup_completed',
+          token: token,
+        );
         Navigator.of(context).pushReplacementNamed('/onboarding');
       } else {
         setState(() => _error = res.error ?? 'Sign up failed');
@@ -106,7 +122,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: ClipOval(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.35)),
+                  child: Container(
+                      color: const Color.fromRGBO(15, 179, 160, 0.35)),
                 ),
               ),
             ),
@@ -126,7 +143,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       decoration: BoxDecoration(
                         color: const Color.fromRGBO(0, 0, 0, 0.35),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color.fromRGBO(0, 150, 136, 0.25)),
+                        border: Border.all(
+                            color: const Color.fromRGBO(0, 150, 136, 0.25)),
                       ),
                       child: Form(
                         key: _formKey,
@@ -134,7 +152,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const SizedBox(height: 8),
-                            const Icon(Icons.local_fire_department_rounded, size: 56, color: Colors.tealAccent),
+                            const Icon(Icons.local_fire_department_rounded,
+                                size: 56, color: Colors.tealAccent),
                             const SizedBox(height: 12),
                             Text(
                               'Join Power6',
@@ -148,85 +167,115 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             Text(
                               'Six tasks a day. Make consistency easy.',
                               textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.white70),
                             ),
                             const SizedBox(height: 24),
-
                             _LabeledField(
                               label: 'Username',
                               child: TextFormField(
                                 controller: _username,
-                                decoration: _inputDecoration(hint: 'Choose a username', icon: Icons.person_outline),
+                                decoration: _inputDecoration(
+                                    hint: 'Choose a username',
+                                    icon: Icons.person_outline),
                                 textInputAction: TextInputAction.next,
                                 style: const TextStyle(color: Colors.white),
-                                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Required'
+                                        : null,
                               ),
                             ),
                             const SizedBox(height: 14),
-
                             _LabeledField(
                               label: 'Email',
                               child: TextFormField(
                                 controller: _email,
-                                decoration: _inputDecoration(hint: 'you@email.com', icon: Icons.alternate_email),
+                                decoration: _inputDecoration(
+                                    hint: 'you@email.com',
+                                    icon: Icons.alternate_email),
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 style: const TextStyle(color: Colors.white),
-                                validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                                validator: (v) =>
+                                    (v == null || !v.contains('@'))
+                                        ? 'Enter a valid email'
+                                        : null,
                               ),
                             ),
                             const SizedBox(height: 14),
-
                             _LabeledField(
                               label: 'Password',
                               child: TextFormField(
                                 controller: _password,
-                                decoration: _inputDecoration(hint: 'Create a password', icon: Icons.lock_outline).copyWith(
+                                decoration: _inputDecoration(
+                                        hint: 'Create a password',
+                                        icon: Icons.lock_outline)
+                                    .copyWith(
                                   suffixIcon: IconButton(
-                                    tooltip: _obscurePwd ? 'Show password' : 'Hide password',
-                                    icon: Icon(_obscurePwd ? Icons.visibility : Icons.visibility_off),
-                                    onPressed: () => setState(() => _obscurePwd = !_obscurePwd),
+                                    tooltip: _obscurePwd
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    icon: Icon(_obscurePwd
+                                        ? Icons.visibility
+                                        : Icons.visibility_off),
+                                    onPressed: () => setState(
+                                        () => _obscurePwd = !_obscurePwd),
                                   ),
                                 ),
                                 obscureText: _obscurePwd,
                                 textInputAction: TextInputAction.next,
                                 style: const TextStyle(color: Colors.white),
-                                validator: (v) => (v == null || v.length < 6) ? 'Min 6 characters' : null,
+                                validator: (v) => (v == null || v.length < 6)
+                                    ? 'Min 6 characters'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 14),
-
                             _LabeledField(
                               label: 'Confirm password',
                               child: TextFormField(
                                 controller: _confirm,
-                                decoration: _inputDecoration(hint: 'Re-enter password', icon: Icons.lock_person_outlined).copyWith(
+                                decoration: _inputDecoration(
+                                        hint: 'Re-enter password',
+                                        icon: Icons.lock_person_outlined)
+                                    .copyWith(
                                   suffixIcon: IconButton(
-                                    tooltip: _obscureCfm ? 'Show password' : 'Hide password',
-                                    icon: Icon(_obscureCfm ? Icons.visibility : Icons.visibility_off),
-                                    onPressed: () => setState(() => _obscureCfm = !_obscureCfm),
+                                    tooltip: _obscureCfm
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    icon: Icon(_obscureCfm
+                                        ? Icons.visibility
+                                        : Icons.visibility_off),
+                                    onPressed: () => setState(
+                                        () => _obscureCfm = !_obscureCfm),
                                   ),
                                 ),
                                 obscureText: _obscureCfm,
                                 style: const TextStyle(color: Colors.white),
-                                validator: (v) => (v == null || v.isEmpty) ? 'Confirm your password' : null,
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Confirm your password'
+                                    : null,
                               ),
                             ),
-
                             if (_error != null) ...[
                               const SizedBox(height: 10),
-                              Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                              Text(_error!,
+                                  style:
+                                      const TextStyle(color: Colors.redAccent),
+                                  textAlign: TextAlign.center),
                             ],
-
                             const SizedBox(height: 16),
                             SizedBox(
                               height: 48,
                               child: ElevatedButton(
                                 onPressed: _loading ? null : _submit,
                                 style: ElevatedButton.styleFrom(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
                                 ),
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 250),
@@ -235,37 +284,41 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           key: ValueKey('loading'),
                                           width: 20,
                                           height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2.5,
+                                              color: Colors.white),
                                         )
                                       : const Text(
                                           key: ValueKey('text'),
                                           'Sign up',
-                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
                                         ),
                                 ),
                               ),
                             ),
-
                             const SizedBox(height: 12),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Text('Already have an account? ', style: TextStyle(color: Colors.white70)),
+                                const Text('Already have an account? ',
+                                    style: TextStyle(color: Colors.white70)),
                                 TextButton(
                                   onPressed: () => Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    MaterialPageRoute(
+                                        builder: (_) => const LoginScreen()),
                                   ),
                                   child: const Text('Log in'),
                                 )
                               ],
                             ),
-
                             const SizedBox(height: 4),
                             Text(
                               'By signing up, you agree to our Terms and Privacy Policy.',
                               textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: Colors.white54),
                             ),
                           ],
                         ),
@@ -281,7 +334,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  InputDecoration _inputDecoration({required String hint, required IconData icon}) {
+  InputDecoration _inputDecoration(
+      {required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: Colors.teal.shade200),
@@ -296,7 +350,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color.fromRGBO(100, 255, 218, 0.9), width: 1.2),
+        borderSide: const BorderSide(
+            color: Color.fromRGBO(100, 255, 218, 0.9), width: 1.2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -323,7 +378,9 @@ class _LabeledField extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0, left: 2),
-          child: Text(label, style: theme.textTheme.labelLarge?.copyWith(color: Colors.white70)),
+          child: Text(label,
+              style:
+                  theme.textTheme.labelLarge?.copyWith(color: Colors.white70)),
         ),
         child,
       ],

@@ -10,6 +10,7 @@ def include_all_routes():
     from .users import router as users_router
     from .streak import router as streak_router
     from .iap import router as iap_router
+    from .events import router as events_router
     # from .users import router as users_router
 
     api_router.include_router(auth_router)
@@ -19,6 +20,7 @@ def include_all_routes():
     api_router.include_router(users_router)
     api_router.include_router(streak_router)
     api_router.include_router(iap_router)
+    api_router.include_router(events_router)
     # api_router.include_router(users_router)
 
 include_all_routes()
