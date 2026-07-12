@@ -11,6 +11,11 @@ Core message: choose the six things that matter today, finish with focus, and bu
 - Week 3: contact 20-30 professionals, coaches, freelancers, and small business operators for feedback and testimonials.
 - Week 4: run a $25-$50 Apple Search Ads keyword test only after screenshots and copy are updated.
 
+Execution assets:
+- App Store copy: `docs/app_store_metadata_0_1_2.md`
+- Organic calendar: `docs/organic_launch_calendar.md`
+- Outreach tracker: `docs/outreach_and_testimonials.md`
+
 ## Organic Content Prompts
 - "What would change if your task list stopped at six?"
 - "The daily review habit that keeps unfinished work from becoming guilt."
