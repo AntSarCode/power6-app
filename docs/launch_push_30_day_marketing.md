@@ -26,3 +26,25 @@ Hi [Name], I launched Power6, a focused daily planning app built around choosing
 
 ## Metrics
 Track installs, signup conversion, first task created, six tasks created, task completion, 3-day retention, subscription screen visits, checkout starts, and purchases.
+
+## Funnel Review
+After the backend with event tracking is deployed, review the launch funnel at least twice per week.
+
+Admin endpoint:
+
+```text
+GET /events/summary?days=30
+Authorization: Bearer <admin token>
+```
+
+Read the funnel in this order:
+
+- `signup_completed`: new account activation.
+- `onboarding_started`: new users reached first-run education.
+- `dashboard_viewed`: users landed in the core app surface.
+- `task_created`: users started the six-task workflow.
+- `task_completed`: users reached the first value moment.
+- `subscription_screen_viewed`: users inspected paid value.
+- `checkout_started`: users showed purchase intent.
+
+If signups are healthy but task creation is low, improve onboarding and empty states. If task completion is healthy but subscription views are low, add better upgrade prompts after streak and insight moments. If subscription views are healthy but checkout starts are low, revise tier copy, screenshots, pricing presentation, and Pro feature clarity.
