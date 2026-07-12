@@ -11,6 +11,7 @@ import '../state/app_state.dart';
 import '../services/analytics_service.dart';
 import '../services/api_service.dart';
 import '../services/purchase_service.dart';
+import '../utils/access.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -623,12 +624,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_shouldShowPlan('plus')) ...[
                     _PlanCard(
                       title: 'PLUS',
-                      subtitle: 'Build consistency with streaks and badges',
-                      bullets: const [
-                        'Daily streak tracker',
-                        'Badge progression and detail',
-                        'Priority planning prompts',
-                      ],
+                      subtitle: tierHeadline(UserTier.plus),
+                      bullets: tierBenefits(UserTier.plus),
                       isCurrent: currentTier == 'plus',
                       accent: const Color.fromRGBO(100, 255, 218, 1),
                       monthlyLabel: _purchaseLabel('plus', 'monthly'),
@@ -641,12 +638,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_shouldShowPlan('pro')) ...[
                     _PlanCard(
                       title: 'PRO',
-                      subtitle: 'All Plus features + CSV export',
-                      bullets: const [
-                        'Everything in Plus',
-                        'CSV export & analytics',
-                        'Priority support',
-                      ],
+                      subtitle: tierHeadline(UserTier.pro),
+                      bullets: tierBenefits(UserTier.pro),
                       isCurrent: currentTier == 'pro',
                       accent: const Color.fromRGBO(173, 216, 230, 1),
                       monthlyLabel: _purchaseLabel('pro', 'monthly'),
@@ -659,12 +652,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   if (_shouldShowPlan('elite'))
                     _PlanCard(
                       title: 'ELITE',
-                      subtitle: 'Everything Pro offers + future team features',
-                      bullets: const [
-                        'Everything in Pro',
-                        'Team accountability roadmap',
-                        'Early feature access',
-                      ],
+                      subtitle: tierHeadline(UserTier.elite),
+                      bullets: tierBenefits(UserTier.elite),
                       isCurrent: currentTier == 'elite',
                       accent: const Color.fromRGBO(255, 215, 0, 1),
                       monthlyLabel: _purchaseLabel('elite', 'monthly'),

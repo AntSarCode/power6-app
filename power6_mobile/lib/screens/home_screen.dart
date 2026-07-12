@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/task_service.dart';
 import '../state/app_state.dart';
 import '../ui/launch_ui.dart';
+import '../utils/access.dart';
 import '../widgets/feedback/modal.dart';
 import '../widgets/task_card.dart';
 import '../widgets/top_right_menu.dart';
@@ -266,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
         appState.todayTaskCount == 0 ? 6 : appState.todayTaskCount;
     final remainingSlots = (6 - appState.todayCreatedCount).clamp(0, 6);
     final nextTask = activeTasks.isEmpty ? null : activeTasks.first;
+    final userTier = normalizeTier(appState.user?.tier);
     final cs = Theme.of(context).colorScheme;
 
     return GestureDetector(
@@ -404,6 +406,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (userTier == UserTier.free ||
+                      userTier == UserTier.plus) ...[
+                    _ConversionPrompt(
+                      targetTier: userTier == UserTier.free
+                          ? UserTier.plus
+                          : UserTier.pro,
+                      completedToday: completedToday,
+                      onUpgrade: () =>
+                          Navigator.of(context).pushNamed('/upgrade'),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   GlassPanel(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,6 +525,74 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ConversionPrompt extends StatelessWidget {
+  final UserTier targetTier;
+  final int completedToday;
+  final VoidCallback onUpgrade;
+
+  const _ConversionPrompt({
+    required this.targetTier,
+    required this.completedToday,
+    required this.onUpgrade,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final title = targetTier == UserTier.plus
+        ? 'Make consistency easier'
+        : 'See what your progress says';
+    final message = targetTier == UserTier.plus
+        ? 'Plus adds streak motivation and badge progression around the daily six-task habit.'
+        : 'Pro turns completed tasks into timeline insights and CSV exports for deeper review.';
+    final actionLabel = targetTier == UserTier.plus ? 'View Plus' : 'View Pro';
+
+    return GlassPanel(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(
+            targetTier == UserTier.plus
+                ? Icons.local_fire_department_outlined
+                : Icons.insights_outlined,
+            color: cs.secondary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  completedToday >= 3
+                      ? '$message You already have $completedToday completions today.'
+                      : message,
+                  style: TextStyle(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: onUpgrade,
+                    icon: const Icon(Icons.workspace_premium_outlined),
+                    label: Text(actionLabel),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

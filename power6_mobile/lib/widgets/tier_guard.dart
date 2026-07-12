@@ -44,7 +44,8 @@ class _UpgradePrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = requiredTier.name.toUpperCase();
+    final label = tierLabel(requiredTier);
+    final benefits = tierBenefits(requiredTier);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -68,11 +69,40 @@ class _UpgradePrompt extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Upgrade to access this feature. You can keep using your dashboard, tasks, review, account settings, and subscription options on the free tier.',
+                tierHeadline(requiredTier),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.white70,
                     ),
+              ),
+              const SizedBox(height: 16),
+              ...benefits.map(
+                (benefit) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 3),
+                        child: Icon(
+                          Icons.check_circle_outline,
+                          size: 18,
+                          color: Color(0xFF64FFDA),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          benefit,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 18),
               Wrap(
