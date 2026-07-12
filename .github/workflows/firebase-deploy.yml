@@ -47,10 +47,27 @@ jobs:
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Verify Firebase Hosting deployment
+        env:
+          FIREBASE_DEPLOY_OUTCOME: ${{ steps.firebase_deploy.outcome }}
         run: |
-          deployed_stamp="$(
-            curl -fsSL \
-              "https://power6-app-30bd8.web.app/deploy-version.json?run=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          )"
-          echo "$deployed_stamp"
-          echo "$deployed_stamp" | grep -F "\"sha\":\"$GITHUB_SHA\""
+          if [ "$FIREBASE_DEPLOY_OUTCOME" != "success" ]; then
+            echo "Firebase Hosting deploy step did not succeed."
+            exit 1
+          fi
+
+          deploy_stamp_url="https://power6-app-30bd8.web.app/deploy-version.json?run=$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
+          for attempt in 1 2 3 4 5 6; do
+            deployed_stamp="$(curl -fsSL "$deploy_stamp_url")"
+            echo "$deployed_stamp"
+
+            if echo "$deployed_stamp" | grep -F "\"sha\":\"$GITHUB_SHA\"" >/dev/null; then
+              exit 0
+            fi
+
+            echo "Waiting for Firebase Hosting release to serve the current deploy (attempt $attempt/6)..."
+            sleep 10
+          done
+
+          echo "Timed out waiting for Firebase Hosting to serve SHA $GITHUB_SHA."
+          exit 1
