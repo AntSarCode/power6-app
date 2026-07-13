@@ -1,305 +1,184 @@
 # Power6
 
-A focused, six-task productivity app that helps you finish the right work every day. Power6 pairs a frictionless daily workflow with streaks, badges, and a clean, unified UI.
+Power6 is a focused six-task productivity app for choosing the work that matters today, finishing it, and building consistency through review, streaks, badges, and tiered insights.
 
----
+The repository contains a Flutter client and a FastAPI backend.
 
-## 🎉 What’s new (Launch-Ready)
-- **Unified dark theme** with gradient + subtle glass effects across **all** screens.
-- **Consistent background**: removed mismatched greys; every screen now uses the same thematic background.
-- **Bottom navigation refresh**: stable nav shell with preserved tab state.
-- **Badges gallery**: dedicated Badges screen with grid view and image assets.
-- **Routing hardening**: added wrapper screens to avoid symbol collisions.
-  - `PowerMainNav` (optional) and `MainNav` now both compile cleanly.
-  - `PowerBadgeScreen` added; `BadgeScreen` retained (optional).
-- **Web build stability**: removed deprecated `withOpacity` usage; replaced with `Color.fromRGBO` / `withAlpha`-safe values.
-- **Launch checklist & deploy docs** added below.
+## Current Status
 
----
+- App version: `0.1.3+20` in `power6_mobile/pubspec.yaml`
+- Frontend: Flutter, Provider/ChangeNotifier, secure token storage, in-app purchase support
+- Backend: FastAPI, SQLAlchemy/SQLModel, Pydantic, JWT auth, PostgreSQL in production and SQLite for local/test
+- Production API fallback: `https://power6-backend.onrender.com`
+- Public app/legal pages: privacy, terms, support, and web deploy output are included
+- iOS subscription flow: Apple In-App Purchase product IDs are wired in `ApiConstants`
 
-## 🚀 Features
+## Licensing
 
-### ✅ Core
-- **Daily Task Input**: add up to 6 priority-ranked tasks
-- **Review & Complete**: check off and roll unfinished work forward
-- **Streaks**: consecutive-day completion tracker
-- **Timeline** *(Pro+)*: browse past days
-- **Badges**: milestone rewards (now visible with PNG assets)
-- **Subscriptions**: Free / Plus / Pro / Elite tiers
-- **Admin** *(Elite/Admin)*: badge + user management
+There is currently no root `LICENSE` file in this repository.
 
-### 🔁 Backend Sync
-- FastAPI + PostgreSQL with JWT auth
-- Device-safe, multi-user data
-- Schema bootstrapping, superuser creation
+The previous README claimed MIT licensing, but the repo does not contain an MIT license file and the project owner intends to move to a stronger copyleft license model. Until a license file is added, default copyright rules generally apply: the source is public to view on GitHub, but it is not clearly licensed for reuse, redistribution, or derivative works outside GitHub's platform permissions.
 
----
+Recommended license direction for this app:
 
-## 🧱 Tech Stack
-**Frontend**: Flutter (Web/Desktop-ready), Provider/ChangeNotifier, SharedPreferences  
-**Backend**: FastAPI, Pydantic v2, SQLAlchemy, PostgreSQL (prod) / SQLite (dev)  
-**Hosting**: Web on **Vercel** (recommended). Backend on **Render** (example).  
+- Use `AGPL-3.0-or-later` if you want copyleft obligations to apply when modified versions are run as a network service.
+- Use `GPL-3.0-or-later` if you only need the stronger copyleft obligations to apply when copies are distributed, but not merely hosted as a service.
 
-> You can also host the web build on Firebase Hosting. Vercel config is included below.
+For Power6, `AGPL-3.0-or-later` is the better fit because the project includes a hosted backend/API and web/mobile clients. To finish the license change, add a root `LICENSE` file with the full GNU Affero General Public License v3.0 text and add SPDX notices where appropriate:
 
----
-
-## 📦 Project Structure (frontend excerpt)
-```
-power6_mobile/lib
-├── app.dart                  # Minimal MaterialApp for login + root
-├── main.dart                 # Providers, route table, root gate
-├── navigation
-│   ├── main_nav.dart         # Primary bottom nav shell (production)
-│   └── power_main_nav.dart   # Wrapper nav (optional; safe fallback)
-├── screens
-│   ├── login_screen.dart
-│   ├── signup_screen.dart
-│   ├── home_screen.dart
-│   ├── task_input_screen.dart
-│   ├── task_review_screen.dart
-│   ├── timeline_screen.dart
-│   ├── streak_screen.dart
-│   ├── subscription_screen.dart
-│   ├── badge_screen.dart          # Legacy/standard badge gallery
-│   └── power_badge_screen.dart    # New badge gallery (wrapper)
-├── state
-│   └── app_state.dart
-├── services
-│   └── streak_service.dart
-├── ui
-│   └── theme.dart             # Unified theme + colors
-└── assets
-    └── badges/                # PNG badge assets
+```text
+SPDX-License-Identifier: AGPL-3.0-or-later
+Copyright (c) 2026 Power6
 ```
 
----
+If you choose GPL instead, replace the SPDX identifier with `GPL-3.0-or-later` and use the full GNU General Public License v3.0 text in `LICENSE`.
 
-## 🖼 Badge Assets
-Make sure these files exist under `assets/badges/` and are referenced in **pubspec.yaml** (see below).
+## Features
 
+- Daily planning for up to six priority-ranked tasks
+- Review flow for completing work and carrying unfinished tasks forward
+- Streak tracking and streak refresh support
+- Badge gallery backed by PNG assets and backend badge evaluation
+- Timeline and task history views for paid tiers
+- Pro analytics and CSV export endpoints
+- Free, Plus, Pro, Elite, Expired, and Admin tier handling
+- Apple App Store subscription products for iOS
+- Stripe checkout support for non-iOS/web subscription paths
+- In-app account deletion with backend cleanup of tasks, subscriptions, badges, and related records
+- Feedback submission and conversion event tracking
+- App review support account seeding for Apple review workflows
+
+## Project Structure
+
+```text
+power6_mobile/
+  lib/
+    config/api_constants.dart      API base URL and endpoint constants
+    env.dart                       Environment-driven API settings
+    main.dart                      Providers, route table, root auth gate
+    navigation/main_nav.dart       Primary bottom navigation shell
+    screens/                       Login, signup, home, task, streak, badges, subscription, account views
+    services/                      Auth, API, tasks, badges, purchases, analytics
+    state/                         App state and backend adapter
+    ui/                            Theme, scaffold, cards, overlays, launch UI
+    widgets/                       Shared UI and feedback modal
+  assets/
+    badges/                        Badge PNG assets
+    graphics/                      Power6 logo and supporting graphics
+  web/
+    privacy/ terms/ support/       Public policy/support pages
+
+power6_backend/
+  app/
+    main.py                        FastAPI app factory, CORS, bootstrap migrations
+    routes/                        Auth, users, tasks, streaks, badges, IAP, Stripe, feedback, events
+    services/                      Task, badge, streak, Apple IAP, Stripe services
+    models/ schemas/ config/       Database models, DTOs, settings
+    scripts/                       DB init, admin creation, badge seeding, review-account seeding
+  tests/                           Backend regression tests
+
+docs/                              App Store review notes, legal docs, launch/marketing docs
+deploy_out/                        Static exported public pages
 ```
-challenge_champion.png
-community_builder.png
-devout.png
-disciplined.png
-early_bird.png
-feedback_fanatic.png
-feedback_guru.png
-goal_getter.png
-night_owl.png
-over_achiever.png
-social_butterfly.png
-starter.png
-task_master.png
-veteran.png
-weekend_warrior.png
+
+## Subscription Products
+
+The iOS App Store product IDs are configured in `power6_mobile/lib/config/api_constants.dart`:
+
+```text
+power6_plusM
+power6_plusY
+power6_proM
+power6_proY
+power6_eliteM
+power6_eliteY
 ```
 
-**pubspec.yaml**
-```yaml
-flutter:
-  assets:
-    - assets/badges/
-```
+The iOS app uses Apple In-App Purchase and activates tiers through `/iap/apple/activate`. Stripe checkout remains available for web or other non-iOS payment paths through `/stripe/create-checkout-session`.
 
----
+## Configuration
 
-## ⚙️ Configuration
-Frontend reads API settings from `lib/widgets/env.dart` (or similar). Example:
-```dart
-class Env {
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
-  );
-}
-```
-Pass the value at build time for web:
+The Flutter app resolves its API base URL through `power6_mobile/lib/config/api_constants.dart`, which reads `power6_mobile/lib/env.dart` and falls back to the production Render backend.
+
+For local or web builds, pass the API URL with a Dart define:
+
 ```bash
-flutter build web --release \
-  --dart-define=API_BASE_URL=https://your-api.example.com
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
----
+For release web builds:
 
-## 🧪 Local Development
-### Backend
+```bash
+flutter build web --release --dart-define=API_BASE_URL=https://your-api.example.com
+```
+
+Backend configuration should come from environment variables. Keep secrets out of the repository.
+
+## Local Development
+
+Backend:
+
 ```bash
 cd power6_backend
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
-### Frontend
+Frontend:
+
 ```bash
 cd power6_mobile
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
 ```
-Make sure CORS is enabled for `http://localhost:xxxx` in your backend.
 
----
+## Deployment Notes
 
-## 🌐 Deploy (Web on Vercel)
-1. Build the Flutter web app:
+Frontend web:
+
 ```bash
 cd power6_mobile
-flutter build web --release \
-  --dart-define=API_BASE_URL=https://your-api.example.com
-```
-1. Deploy the contents of `power6_mobile/build/web` to Vercel.
-1. Add `vercel.json` to route all paths to `index.html` (SPA):
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-> On Firebase Hosting, use a similar rewrite rule to `index.html`.
-
----
-
-## 🧭 Routing Notes
-- Production uses **`MainNav`** (bottom bar) and shows the **Badges** tab.
-- Optional wrappers:
-  - `PowerMainNav`: alternative nav shell to bypass any legacy symbol collisions.
-  - `PowerBadgeScreen`: badge gallery wrapper.
-- Update routes in `main.dart`/`app.dart` if you switch wrappers.
-
-Example (`main.dart`):
-```dart
-void example() {
-  final routes = <String, WidgetBuilder>{
-    '/home'   : (ctx) => const MainNav(),
-    '/badges' : (ctx) => const PowerBadgeScreen(),
-  };
-}
+flutter build web --release --dart-define=API_BASE_URL=https://your-api.example.com
 ```
 
----
+Deploy `power6_mobile/build/web` to your static host. For single-page-app routing, rewrite all routes to `index.html`.
 
-## 💄 UI Guidelines (implemented)
-- Unified dark gradient background on all screens
-- Subtle glow and glass (BackdropFilter) accents
-- Smooth, low-friction inputs and large tap targets
-- Consistent spacing and rounded corners
-- Reduced visual noise; emphasis on primary actions
+Backend:
 
----
+- Run the FastAPI app from `power6_backend/app/main.py`.
+- Configure CORS through `ALLOWED_ORIGINS` or `CORS_ALLOW_ALL=1` for debugging only.
+- Provide database, JWT, Apple IAP, and Stripe settings through environment variables.
+- The app includes lightweight bootstrap migrations for critical task/subscription columns.
 
-## ✅ Launch Checklist
-- [ ] `flutter analyze` → 0 errors
-- [ ] `dart format .` clean
-- [ ] Badge assets present & listed in `pubspec.yaml`
-- [ ] API base URL defined via `--dart-define` (web) or `env.dart`
-- [ ] SPA rewrites in hosting config (Vercel/Firebase)
-- [ ] Smoke test: login → dashboard → every tab → badges grid visible
-- [ ] Version bump + changelog updated
+## Useful Commands
 
----
-
-## 🧭 Changelog (high level)
-- **UI**: unified theme, gradient background, glass accents
-- **Nav**: stable bottom navigation with tab state, badges tab visible
-- **Badges**: image grid screen; assets wired; error-safe fallbacks
-- **Build**: removed deprecated color APIs that broke web precision
-- **Routing**: added wrappers (`PowerMainNav`, `PowerBadgeScreen`) to prevent analyzer conflicts
-- **Docs**: deploy instructions for Vercel + SPA rewrites; launch checklist
-
----
-
-## 📬 Feedback
-Ideas, issues, PRs welcome. Let us know what would make Power6 even smoother.
-
----
-
-## 🧰 Requirements
-- Flutter **stable 3.x** and Dart **3.x**
-- Android SDK / Xcode (for mobile builds)
-- Node/npm (only if you deploy to Vercel via CLI)
-
-## 🔧 Setup (first time)
 ```bash
-# from repo root
-cd power6_mobile
-flutter pub get
+flutter analyze
+flutter test
+flutter build web --release
+pytest
 ```
 
-### Configure API endpoint
-Use a Dart define (recommended) or edit your env file.
-```bash
-flutter run -d chrome \
-  --dart-define=API_BASE_URL=https://your-api.example.com
-```
+Run backend tests from `power6_backend` or with the configured project virtual environment.
 
-## 📱 Build Targets
-**Web (release)**
-```bash
-flutter build web --release \
-  --dart-define=API_BASE_URL=https://your-api.example.com
-```
-**Android (release APK)**
-```bash
-flutter build apk --release
-```
-**iOS (release)**
-```bash
-flutter build ios --release
-```
+## Launch Checklist
 
-## 🛠 Troubleshooting
-### 1) `The name 'X' isn't a class` in routes
-This usually means the imported file doesn’t expose a class with that name **or** your route value is outside the `MaterialApp(...)` call.
-- Ensure imports are unaliased when you reference a class directly:
-  ```dart
-  import 'navigation/main_nav.dart';
-  import 'screens/power_badge_screen.dart';
-  ```
-- Use constructors in routes:
-  ```dart
-void example() {
-  final routes = <String, WidgetBuilder>{
-    '/home'   : (ctx) => const MainNav(),
-    '/badges' : (ctx) => const PowerBadgeScreen(),
-  };
-}
-```
-- If the legacy files are conflicted, you can safely switch to the wrappers: `PowerMainNav`, `PowerBadgeScreen`.
+- [ ] Add the root `LICENSE` file for the selected AGPL/GPL license
+- [ ] Add SPDX headers or notices to source files where desired
+- [ ] Run `flutter analyze`
+- [ ] Run Flutter widget/accessibility tests
+- [ ] Run backend `pytest`
+- [ ] Verify badge assets are present and listed in `pubspec.yaml`
+- [ ] Smoke test login, task creation, review, dashboard, timeline, streaks, badges, subscriptions, feedback, and account deletion
+- [ ] Confirm Privacy Policy, Terms, Support, and App Store metadata match the current app behavior
+- [ ] Confirm Apple IAP products are available in App Store Connect and submitted with the iOS build
 
-### 2) Parser error near a colon (e.g., `get or set expected, got :`)
-Happens when the `routes:` map fell **outside** `MaterialApp(...)` because of a missing comma/brace above it.
-- Ensure the line before `routes:` ends with a comma (e.g., `home: const _RootGate(),`).
-- Make sure parentheses/braces around `MaterialApp(` are balanced.
-- Route keys must be quoted strings and separated by commas.
+## Recent Updates Reflected In This README
 
-### 3) Badges not visible
-- Verify files exist under `assets/badges/` and are listed in **pubspec.yaml**:
-  ```yaml
-  flutter:
-    assets:
-      - assets/badges/
-  ```
-- File names must match exactly (snake_case), e.g. `goal_getter.png`.
-- Hard refresh cache on web (Ctrl/Cmd+Shift+R) after deploy.
+- Removed the stale MIT license claim
+- Documented the intended AGPL/GPL licensing path
+- Updated version and dependency context for the current Flutter app
+- Added Apple IAP product IDs and activation endpoint notes
+- Added account deletion, app review, feedback, event tracking, analytics, and CSV export coverage
+- Corrected API configuration paths and backend startup command
+- Replaced stale/garbled emoji-heavy sections with plain ASCII documentation
 
-### 4) `withOpacity` deprecation / precision loss (web)
-Replace with one of:
-```dart
-// exact RGBA
-const c = Color.fromRGBO(15, 179, 160, 0.22);
-// or integer alpha
-const c2 = Color(0xFF009688).withAlpha(56);
-```
-
-## 🔐 Environment & Security
-- Keep secrets out of the repo; prefer `--dart-define` or hosting env vars.
-- Backend should enforce auth (JWT), rate-limits, and CORS for your domains.
-
-## 🗺 Roadmap (post-launch ideas)
-- Settings page (theme toggles, notifications)
-- Streak/badge detail dialogs and share images
-- CSV export (Pro) and calendar sync
-- Team/group features (Elite)
-- Offline queue & optimistic updates
-
-## 🪪 License
-MIT — open to use, modify, and share.
