@@ -15,23 +15,18 @@ The repository contains a Flutter client and a FastAPI backend.
 
 ## Licensing
 
-There is currently no root `LICENSE` file in this repository.
+Power6 is licensed under the GNU Affero General Public License v3.0, as published in the root `LICENSE` file.
 
-The previous README claimed MIT licensing, but the repo does not contain an MIT license file and the project owner intends to move to a stronger copyleft license model. Until a license file is added, default copyright rules generally apply: the source is public to view on GitHub, but it is not clearly licensed for reuse, redistribution, or derivative works outside GitHub's platform permissions.
+The previous README claimed MIT licensing, but the repo did not contain an MIT license file and the project owner chose a stronger copyleft license model instead. `AGPL-3.0-or-later` is the better fit for Power6 because the project includes a hosted backend/API and web/mobile clients.
 
-Recommended license direction for this app:
+Recommended source notice for new or substantially edited source files:
 
-- Use `AGPL-3.0-or-later` if you want copyleft obligations to apply when modified versions are run as a network service.
-- Use `GPL-3.0-or-later` if you only need the stronger copyleft obligations to apply when copies are distributed, but not merely hosted as a service.
-
-For Power6, `AGPL-3.0-or-later` is the better fit because the project includes a hosted backend/API and web/mobile clients. To finish the license change, add a root `LICENSE` file with the full GNU Affero General Public License v3.0 text and add SPDX notices where appropriate:
-
-```text
+```txt
 SPDX-License-Identifier: AGPL-3.0-or-later
 Copyright (c) 2026 Power6
 ```
 
-If you choose GPL instead, replace the SPDX identifier with `GPL-3.0-or-later` and use the full GNU General Public License v3.0 text in `LICENSE`.
+The root `LICENSE` file contains the full GNU Affero General Public License v3.0 text. GitHub should detect the repository license from that standard file.
 
 ## Features
 
@@ -162,7 +157,7 @@ Run backend tests from `power6_backend` or with the configured project virtual e
 
 ## Launch Checklist
 
-- [ ] Add the root `LICENSE` file for the selected AGPL/GPL license
+- [x] Add the root `LICENSE` file for the selected AGPL/GPL license
 - [ ] Add SPDX headers or notices to source files where desired
 - [ ] Run `flutter analyze`
 - [ ] Run Flutter widget/accessibility tests
@@ -181,4 +176,3 @@ Run backend tests from `power6_backend` or with the configured project virtual e
 - Added account deletion, app review, feedback, event tracking, analytics, and CSV export coverage
 - Corrected API configuration paths and backend startup command
 - Replaced stale/garbled emoji-heavy sections with plain ASCII documentation
-
