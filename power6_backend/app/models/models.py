@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     text,
     Index,
+    UniqueConstraint,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -35,6 +36,9 @@ class User(Base):
     subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete")
     user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
     events = relationship("UserEvent", back_populates="user", cascade="all, delete-orphan")
+    event_receipts = relationship("EventReceipt", back_populates="user", cascade="all, delete-orphan")
+    apple_transactions = relationship("AppleIapTransaction", back_populates="user", cascade="all, delete-orphan")
+    purchase_claims = relationship("ApplePurchaseClaim", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r}>"
@@ -109,7 +113,7 @@ class AppleIapTransaction(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    user = relationship("User")
+    user = relationship("User", back_populates="apple_transactions")
 
 
 class AdminMessage(Base):
@@ -152,3 +156,21 @@ class UserEvent(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<UserEvent id={self.id} name={self.name!r} user_id={self.user_id}>"
+
+
+class EventReceipt(Base):
+    """Internal idempotency keys, never included in exported measurement data."""
+    __tablename__ = "event_receipts"
+    __table_args__ = (UniqueConstraint("user_id", "key"),)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    key = Column(String(160), nullable=False)
+    user = relationship("User", back_populates="event_receipts")
+
+
+class ApplePurchaseClaim(Base):
+    """Unique ownership for new activations, without altering historical transaction rows."""
+    __tablename__ = "apple_purchase_claims"
+    transaction_id = Column(String(160), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user = relationship("User", back_populates="purchase_claims")

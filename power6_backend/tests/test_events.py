@@ -43,7 +43,7 @@ def test_create_event_filters_properties_and_sets_tier():
         "/events/",
         headers={"Authorization": f"Bearer {token}", "User-Agent": "Power6Test"},
         json={
-            "name": "task_created",
+            "name": "dashboard_viewed",
             "source": "mobile",
             "properties": {
                 "count": 1,
@@ -55,7 +55,7 @@ def test_create_event_filters_properties_and_sets_tier():
 
     assert response.status_code == 201
     body = response.json()
-    assert body["name"] == "task_created"
+    assert body["name"] == "dashboard_viewed"
     assert body["tier"] == "pro"
     assert body["properties"] == {"count": 1, "completed_today": 2}
 
@@ -64,12 +64,12 @@ def test_create_event_filters_properties_and_sets_tier():
     db = SessionLocal()
     try:
         event = db.query(UserEvent).filter(UserEvent.user_id == user_id).one()
-        assert event.user_agent == "Power6Test"
+        assert event.user_agent is None
     finally:
         db.close()
 
 
-def test_unknown_event_name_is_normalized():
+def test_unknown_event_name_is_rejected():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     app = build_app()
@@ -83,8 +83,7 @@ def test_unknown_event_name_is_normalized():
         json={"name": "raw_private_event_name", "properties": {}},
     )
 
-    assert response.status_code == 201
-    assert response.json()["name"] == "dashboard_viewed"
+    assert response.status_code == 422
 
 
 def test_admin_event_summary_returns_funnel_counts():
@@ -97,7 +96,7 @@ def test_admin_event_summary_returns_funnel_counts():
     admin_token = create_access_token({"sub": admin_username})
     user_token = create_access_token({"sub": user_username})
 
-    for name in ["signup_completed", "dashboard_viewed", "task_created"]:
+    for name in ["onboarding_started", "dashboard_viewed", "checkout_started"]:
         response = client.post(
             "/events/",
             headers={"Authorization": f"Bearer {user_token}"},
@@ -115,10 +114,10 @@ def test_admin_event_summary_returns_funnel_counts():
     assert body["window_days"] == 30
     assert body["total_events"] == 3
     assert body["unique_users"] == 1
-    assert body["counts"]["task_created"] == {"events": 1, "users": 1}
+    assert body["counts"]["onboarding_started"] == {"events": 1, "users": 1}
     funnel = {item["name"]: item for item in body["funnel"]}
-    assert funnel["signup_completed"]["events"] == 1
-    assert funnel["checkout_started"]["events"] == 0
+    assert funnel["signup_completed"]["events"] == 0
+    assert funnel["checkout_started"]["events"] == 1
 
 
 def test_event_summary_blocks_non_admins():

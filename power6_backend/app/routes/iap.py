@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
-from app.models.models import AppleIapTransaction, Subscription, User
+from app.models.models import AppleIapTransaction, ApplePurchaseClaim, Subscription, User
 from app.routes.auth import get_current_user
 from app.schemas import UserRead
 from app.services.apple_iap_service import verify_apple_transaction
+from app.services.event_service import begin_claim, record_event
 
 router = APIRouter(prefix="/iap", tags=["In-App Purchases"])
 
@@ -36,6 +38,18 @@ class AppleActivateRequest(BaseModel):
     source: str = "ios_app_store"
 
 
+def _restore_entitlement(db, current_user, tier):
+    current_user.tier = tier
+    existing = db.query(Subscription).filter_by(user_id=current_user.id, tier=tier).first()
+    if existing is None:
+        db.add(Subscription(user_id=current_user.id, tier=tier, active=True))
+    else:
+        existing.active = True
+    db.commit()
+    db.refresh(current_user)
+    return UserRead.model_validate(current_user)
+
+
 @router.post("/apple/activate", response_model=UserRead)
 async def activate_apple_purchase(
     payload: AppleActivateRequest,
@@ -60,6 +74,26 @@ async def activate_apple_purchase(
         transaction_id=payload.transaction_id,
         signed_transaction_info=payload.signed_transaction_info or payload.verification_data,
     )
+
+    # Lock ownership with a unique row, including simultaneous restore callbacks.
+    # Check historical rows too; older deployments did not create claim records.
+    historical = db.query(AppleIapTransaction).filter(
+        AppleIapTransaction.transaction_id == verified.transaction_id,
+    ).all()
+    if any(row.user_id != current_user.id for row in historical):
+        raise HTTPException(status_code=409, detail="Purchase belongs to another account.")
+    begin_claim(db)
+    try:
+        with db.begin_nested():
+            db.add(ApplePurchaseClaim(transaction_id=verified.transaction_id, user_id=current_user.id))
+            db.flush()
+    except IntegrityError:
+        owner = db.get(ApplePurchaseClaim, verified.transaction_id)
+        if owner is None or owner.user_id != current_user.id:
+            raise HTTPException(status_code=409, detail="Purchase belongs to another account.")
+        return _restore_entitlement(db, current_user, tier)
+    if historical:
+        return _restore_entitlement(db, current_user, tier)
 
     current_user.tier = tier
     db.add(
@@ -87,6 +121,9 @@ async def activate_apple_purchase(
         ),
     )
     db.add(current_user)
+    record_event(db, current_user, "purchase_verified", properties={
+        "plan": tier, "platform": "ios", "environment": verified.environment or "",
+    }, once_key=f"purchase:{verified.transaction_id}")
     db.commit()
     db.refresh(current_user)
 

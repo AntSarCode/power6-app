@@ -13,7 +13,8 @@ import '../state/app_state.dart';
 
 /// Bottom navigation shell.
 class MainNav extends StatefulWidget {
-  const MainNav({Key? key}) : super(key: key);
+  const MainNav({Key? key, this.screens}) : super(key: key);
+  final List<Widget>? screens;
 
   @override
   State<MainNav> createState() => _MainNavState();
@@ -21,6 +22,7 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _index = 0;
+  final Set<int> _visited = {0};
 
   // Keep screens alive between tab switches
   late final List<Widget> _screens;
@@ -28,15 +30,16 @@ class _MainNavState extends State<MainNav> {
   @override
   void initState() {
     super.initState();
-    _screens = [
-      const HomeScreen(),
-      const input.TaskInputScreen(),
-      const review.TaskReviewScreen(),
-      const TimelineScreen(),
-      const StreakScreen(),
-      const SubscriptionScreen(),
-      const PowerBadgeScreen(),
-    ];
+    _screens = widget.screens ??
+        [
+          const HomeScreen(),
+          const input.TaskInputScreen(),
+          const review.TaskReviewScreen(),
+          const TimelineScreen(),
+          const StreakScreen(),
+          const SubscriptionScreen(),
+          const PowerBadgeScreen(),
+        ];
   }
 
   @override
@@ -76,25 +79,58 @@ class _MainNavState extends State<MainNav> {
               child: ClipOval(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                  child: Container(color: const Color.fromRGBO(15, 179, 160, 0.22)),
+                  child: Container(
+                      color: const Color.fromRGBO(15, 179, 160, 0.22)),
                 ),
               ),
             ),
           ),
-          SafeArea(child: IndexedStack(index: _index, children: _screens)),
+          SafeArea(
+              child: IndexedStack(
+                  index: _index,
+                  children: List.generate(
+                    _screens.length,
+                    (index) => _visited.contains(index)
+                        ? _screens[index]
+                        : const SizedBox.shrink(),
+                  ))),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (v) => setState(() => _index = v),
+        onDestinationSelected: (v) => setState(() {
+          _index = v;
+          _visited.add(v);
+        }),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.add_box_outlined), selectedIcon: Icon(Icons.add_box), label: 'Input'),
-          NavigationDestination(icon: Icon(Icons.checklist_outlined), selectedIcon: Icon(Icons.checklist), label: 'Review'),
-          NavigationDestination(icon: Icon(Icons.timeline_outlined), selectedIcon: Icon(Icons.timeline), label: 'Timeline'),
-          NavigationDestination(icon: Icon(Icons.local_fire_department_outlined), selectedIcon: Icon(Icons.local_fire_department), label: 'Streak'),
-          NavigationDestination(icon: Icon(Icons.workspace_premium_outlined), selectedIcon: Icon(Icons.workspace_premium), label: 'Subscribe'),
-          NavigationDestination(icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: 'Badges'),
+          NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard'),
+          NavigationDestination(
+              icon: Icon(Icons.add_box_outlined),
+              selectedIcon: Icon(Icons.add_box),
+              label: 'Input'),
+          NavigationDestination(
+              icon: Icon(Icons.checklist_outlined),
+              selectedIcon: Icon(Icons.checklist),
+              label: 'Review'),
+          NavigationDestination(
+              icon: Icon(Icons.timeline_outlined),
+              selectedIcon: Icon(Icons.timeline),
+              label: 'Timeline'),
+          NavigationDestination(
+              icon: Icon(Icons.local_fire_department_outlined),
+              selectedIcon: Icon(Icons.local_fire_department),
+              label: 'Streak'),
+          NavigationDestination(
+              icon: Icon(Icons.workspace_premium_outlined),
+              selectedIcon: Icon(Icons.workspace_premium),
+              label: 'Subscribe'),
+          NavigationDestination(
+              icon: Icon(Icons.emoji_events_outlined),
+              selectedIcon: Icon(Icons.emoji_events),
+              label: 'Badges'),
         ],
       ),
     );

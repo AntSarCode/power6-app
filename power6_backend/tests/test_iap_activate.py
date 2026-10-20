@@ -156,7 +156,7 @@ def test_apple_iap_activate_accepts_legacy_short_product_id():
     assert response.json()["tier"] == "pro"
 
 
-def test_verify_apple_transaction_accepts_storekit2_signed_payload_without_server_lookup():
+def test_verify_apple_transaction_looks_up_client_payload_with_apple(monkeypatch):
     signed = _unsigned_jws(
         {
             "bundleId": "app.power6.mobile",
@@ -164,13 +164,19 @@ def test_verify_apple_transaction_accepts_storekit2_signed_payload_without_serve
             "transactionId": "2000000123456789",
             "originalTransactionId": "2000000000000001",
             "purchaseDate": 1781800000000,
-            "expiresDate": 1784392000000,
+            "expiresDate": int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000),
             "environment": "Sandbox",
         },
     )
 
     import app.services.apple_iap_service as apple_service
 
+    lookups = []
+    async def fetch(transaction_id, endpoint, token):
+        lookups.append(transaction_id)
+        return signed
+    monkeypatch.setattr(apple_service, "_app_store_jwt", lambda: "test-server-token")
+    monkeypatch.setattr(apple_service, "_fetch_transaction", fetch)
     original_bundle_id = apple_service.settings.APPLE_IAP_BUNDLE_ID
     try:
         apple_service.settings.APPLE_IAP_BUNDLE_ID = "app.power6.mobile"
@@ -184,6 +190,7 @@ def test_verify_apple_transaction_accepts_storekit2_signed_payload_without_serve
     finally:
         apple_service.settings.APPLE_IAP_BUNDLE_ID = original_bundle_id
 
+    assert lookups == ["2000000123456789"]
     assert verified.product_id == "power6_proM"
     assert verified.transaction_id == "2000000123456789"
     assert verified.original_transaction_id == "2000000000000001"
@@ -191,7 +198,7 @@ def test_verify_apple_transaction_accepts_storekit2_signed_payload_without_serve
     assert verified.expiration_date is not None
 
 
-def test_apple_iap_activate_records_storekit2_signed_payload():
+def test_apple_iap_activate_records_storekit2_signed_payload(monkeypatch):
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     app = build_app()
@@ -221,12 +228,18 @@ def test_apple_iap_activate_records_storekit2_signed_payload():
             "transactionId": "2000000999999999",
             "originalTransactionId": "2000000888888888",
             "purchaseDate": 1781800000000,
-            "expiresDate": 1784392000000,
+            "expiresDate": int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000),
             "environment": "Sandbox",
         },
     )
 
     token = create_access_token({"sub": "iap_sk2_user"})
+    lookups = []
+    async def fetch(transaction_id, endpoint, token):
+        lookups.append(transaction_id)
+        return signed
+    monkeypatch.setattr(apple_service, "_app_store_jwt", lambda: "test-server-token")
+    monkeypatch.setattr(apple_service, "_fetch_transaction", fetch)
     original_bundle_id = apple_service.settings.APPLE_IAP_BUNDLE_ID
     try:
         apple_service.settings.APPLE_IAP_BUNDLE_ID = "app.power6.mobile"

@@ -16,6 +16,7 @@ from app.schemas import (
 )
 from app.database import get_db
 from app.utils.hash import get_password_hash, verify_password
+from app.services.event_service import record_event
 
 router = APIRouter(
     prefix="/auth",
@@ -148,6 +149,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         is_admin=False,
     )
     db.add(new_user)
+    db.flush()
+    record_event(db, new_user, "signup_completed", once_key="signup")
     db.commit()
     db.refresh(new_user)
 

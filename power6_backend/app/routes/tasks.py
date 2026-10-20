@@ -15,6 +15,7 @@ from app.models.models import Task as TaskModel
 from app.models.models import User
 from app.routes.auth import get_current_user
 from app.schemas import TaskCreate, TaskRead, TaskUpdate
+from app.services.event_service import record_event
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -134,6 +135,8 @@ def _history_query(
 
 
 def _check_daily_new_task_limit(db: Session, uid: int) -> None:
+    # Serialize task-count decisions for this account on PostgreSQL.
+    db.query(User.id).filter(User.id == uid).with_for_update().one()
     day_start, day_end = _utc_day_bounds()
 
     count = (
@@ -161,6 +164,22 @@ def _get_owned_task(db: Session, uid: int, task_id: int) -> TaskModel:
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+def _record_completion(db, user, task, was_completed):
+    if was_completed or not task.completed:
+        return
+    db.flush()
+    db.query(User.id).filter(User.id == user.id).with_for_update().one()
+    record_event(db, user, "task_completed", once_key=f"complete:{task.id}")
+    start, end = _utc_day_bounds()
+    count = db.query(TaskModel).filter(
+        TaskModel.user_id == user.id, TaskModel.completed.is_(True),
+        TaskModel.completed_at >= start, TaskModel.completed_at <= end,
+    ).count()
+    if count >= 6:
+        record_event(db, user, "six_tasks_completed",
+                     once_key=f"six-completed:{start.date()}")
 
 
 def _apply_task_update(task: TaskModel, payload_data: dict[str, Any]) -> None:
@@ -414,6 +433,17 @@ def create_task(
         created_at=_now_utc(),
     )
     db.add(db_task)
+    db.flush()
+    record_event(db, current_user, "task_created", once_key=f"create:{db_task.id}")
+    start, end = _utc_day_bounds()
+    count = db.query(TaskModel).filter(
+        TaskModel.user_id == uid,
+        TaskModel.created_at >= start, TaskModel.created_at <= end,
+    ).count()
+    if count >= 6:
+        record_event(db, current_user, "six_tasks_planned",
+                     once_key=f"six-planned:{start.date()}")
+    _record_completion(db, current_user, db_task, False)
     db.commit()
     db.refresh(db_task)
     return _to_task_read(db_task)
@@ -430,7 +460,9 @@ def patch_task(
     task = _get_owned_task(db, uid, task_id)
     data = payload.model_dump(exclude_unset=True)
 
+    was_completed = bool(task.completed)
     _apply_task_update(task, data)
+    _record_completion(db, current_user, task, was_completed)
 
     db.commit()
     db.refresh(task)
@@ -446,6 +478,7 @@ def toggle_task_completion(
     uid = _coerce_user_id(current_user)
     task = _get_owned_task(db, uid, task_id)
 
+    was_completed = bool(task.completed)
     if task.completed:
         task.completed = False
         task.completed_at = None
@@ -454,6 +487,7 @@ def toggle_task_completion(
         if not getattr(task, "completed_at", None):
             task.completed_at = _now_utc()
 
+    _record_completion(db, current_user, task, was_completed)
     db.commit()
     db.refresh(task)
     return _to_task_read(task)
@@ -470,7 +504,9 @@ def update_task(
     task = _get_owned_task(db, uid, task_id)
     update_data = updated_task.model_dump(exclude_unset=True)
 
+    was_completed = bool(task.completed)
     _apply_task_update(task, update_data)
+    _record_completion(db, current_user, task, was_completed)
 
     db.commit()
     db.refresh(task)

@@ -35,7 +35,7 @@ def _daily_counts(db: Session, user_id: int) -> Dict[str, int]:
     """
     rows = (
         db.query(
-            cast(Task.completed_at, Date).label("day"),
+            _day_expression(db).label("day"),
             func.count().label("cnt"),
         )
         .filter(
@@ -47,7 +47,14 @@ def _daily_counts(db: Session, user_id: int) -> Dict[str, int]:
         .group_by("day")
         .all()
     )
-    return {row.day.isoformat(): int(row.cnt) for row in rows if row.day is not None}
+    return {str(row.day): int(row.cnt) for row in rows if row.day is not None}
+
+
+def _day_expression(db):
+    if db.get_bind().dialect.name == "sqlite":
+        # SQLite CAST(timestamp AS DATE) returns a numeric year, not a date.
+        return func.date(Task.completed_at)
+    return cast(func.timezone("UTC", Task.completed_at), Date)
 
 
 essential_fields = [Task.user_id, Task.completed, Task.streak_bound, Task.completed_at]
@@ -61,7 +68,7 @@ def _today_count(db: Session, user_id: int) -> int:
             Task.user_id == user_id,
             Task.completed.is_(True),
             Task.streak_bound.is_(True),
-            cast(Task.completed_at, Date) == today,
+            _day_expression(db) == today,
         )
     )
     return int(q.scalar() or 0)

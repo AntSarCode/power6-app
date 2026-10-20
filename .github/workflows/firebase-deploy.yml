@@ -4,7 +4,10 @@ on:
     branches: [ main ]
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
   build-and-deploy:
+    needs: validate
     runs-on: ubuntu-latest
 
     steps:
@@ -12,7 +15,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.41.7'
 
       - name: Flutter Pub Get
         working-directory: ./power6_mobile

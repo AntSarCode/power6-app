@@ -1,14 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
+import '../models/user.dart';
 import '../state/app_state.dart';
 import 'login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   static const routeName = '/signup';
-  const SignUpScreen({super.key});
+  const SignUpScreen({super.key, this.authService});
+  final AuthService? authService;
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -27,13 +28,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _error;
 
   late final AuthService _authService;
-  late final AnalyticsService _analytics;
 
   @override
   void initState() {
     super.initState();
-    _authService = AuthService();
-    _analytics = AnalyticsService();
+    _authService = widget.authService ?? AuthService();
   }
 
   @override
@@ -42,7 +41,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _email.dispose();
     _password.dispose();
     _confirm.dispose();
-    _analytics.dispose();
     super.dispose();
   }
 
@@ -65,21 +63,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
       if (res.isSuccess) {
         final token = res.data?['access_token']?.toString() ?? '';
-        final appState = context.read<AppState>();
-        if (token.isNotEmpty) {
-          await appState.setAuthToken(token);
-        }
+        final profile = await _authService.getCurrentUser();
         if (!mounted) return;
-        _analytics.track(
-          'signup_completed',
-          token: token,
-        );
+        final userMap = profile.data?['user'] as Map<String, dynamic>?;
+        if (!profile.isSuccess || userMap == null || token.isEmpty) {
+          setState(() => _error = 'Account created. Please log in to start planning.');
+          return;
+        }
+        final appState = context.read<AppState>();
+        await appState.setAuthToken(token, user: User.fromJson(userMap));
+        if (!mounted) return;
+
         Navigator.of(context).pushReplacementNamed('/onboarding');
       } else {
         setState(() => _error = res.error ?? 'Sign up failed');
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

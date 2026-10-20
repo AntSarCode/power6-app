@@ -119,14 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       await app.syncTasks();
       await app.loadStreak();
-      _analytics.track(
-        'task_created',
-        token: app.accessToken,
-        properties: <String, dynamic>{
-          'count': 1,
-          'today_task_count': app.todayTaskCount,
-        },
-      );
+
     }, success: 'Task added.');
   }
 
@@ -142,14 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (app.currentStreak >= 3) {
         success = 'Task complete. Your streak is building.';
       }
-      _analytics.track(
-        'task_completed',
-        token: app.accessToken,
-        properties: <String, dynamic>{
-          'completed_today': app.todayCompletedCount,
-          'today_task_count': app.todayTaskCount,
-        },
-      );
+
     }, success: () => success);
   }
 

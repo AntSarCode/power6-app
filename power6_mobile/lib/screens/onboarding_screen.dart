@@ -80,8 +80,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const Spacer(),
                 FilledButton.icon(
-                  onPressed: () =>
-                      Navigator.of(context).pushReplacementNamed('/home'),
+                  onPressed: () {
+                    _analytics.track('onboarding_completed',
+                        token: context.read<AppState>().accessToken);
+                    Navigator.of(context).pushReplacementNamed('/home');
+                  },
                   icon: const Icon(Icons.arrow_forward),
                   label: const Text('Start planning'),
                 ),

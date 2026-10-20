@@ -53,6 +53,8 @@ Thumbs.db
 *.pyd
 *.db
 *.sqlite3
+*.sqlite
+.pytest_cache/
 .env
 .env.*
 .venv/

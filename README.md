@@ -6,7 +6,7 @@ The repository contains a Flutter client and a FastAPI backend.
 
 ## Current Status
 
-- App version: `0.1.3+20` in `power6_mobile/pubspec.yaml`
+- App version: `0.1.4+21` in `power6_mobile/pubspec.yaml`
 - Frontend: Flutter, Provider/ChangeNotifier, secure token storage, in-app purchase support
 - Backend: FastAPI, SQLAlchemy/SQLModel, Pydantic, JWT auth, PostgreSQL in production and SQLite for local/test
 - Production API fallback: `https://power6-backend.onrender.com`
@@ -176,3 +176,7 @@ Run backend tests from `power6_backend` or with the configured project virtual e
 - Added account deletion, app review, feedback, event tracking, analytics, and CSV export coverage
 - Corrected API configuration paths and backend startup command
 - Replaced stale/garbled emoji-heavy sections with plain ASCII documentation
+
+## Ongoing roadmap
+
+See [the development roadmap](docs/development_roadmap.md) for the current sprint, completed passes, validation evidence, and the next work. Launch measurement definitions and release preflight are in [the measurement runbook](docs/launch_measurement.md).
