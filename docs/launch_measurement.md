@@ -115,6 +115,23 @@ events, and SQLite streak grouping failure. All three were corrected and covered
 by regression tests; review/streak refresh succeeded in the repeated run.
 PostgreSQL behavior and real store purchases still require deployed validation.
 
+### 2026-10-21 Render startup correction
+
+Render's failed deploy stopped at `create_engine(DATABASE_URL)` with
+`ModuleNotFoundError: No module named 'psycopg'`. The unpinned SQLAlchemy dependency
+resolved to 2.1, whose default driver for `postgresql://` URLs is Psycopg 3;
+the requirements previously installed only `psycopg2-binary`. See the
+[SQLAlchemy 2.1 migration note](https://docs.sqlalchemy.org/en/21/changelog/migration_21.html#default-postgresql-driver-changed-to-psycopg-psycopg-3).
+
+Added `psycopg[binary]>=3.2,<4`, retaining Psycopg 2 for explicitly configured
+legacy URLs. A clean Python 3.13 environment reproduced the exact import failure
+before this addition and passed all 38 tests afterward, with SQLAlchemy 2.1.6.
+New tests load the DBAPI for plain PostgreSQL, explicit Psycopg 3, and explicit
+Psycopg 2 URLs without connecting to a database. CI now installs the same
+requirements as Render, runs `pip check`, and includes these driver regressions.
+These tests verify the reported startup blocker; they do not claim a live
+PostgreSQL connection or a successful Render deployment.
+
 Automated validation covers event filtering/access control, server action
 milestones, daily limit, duplicate completion and purchase callbacks, account
 deletion, Apple server lookup/mismatch/expiry/revocation, sandbox exclusion,
