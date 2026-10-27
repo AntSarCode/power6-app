@@ -43,27 +43,33 @@ def build_launch_report(db, *, days=30, now=None):
     # Group in SQL; memory is bounded by users x event names x window days.
     event_day = (func.date(func.timezone("UTC", UserEvent.created_at))
                  if db.get_bind().dialect.name == "postgresql" else func.date(UserEvent.created_at))
+    platform = UserEvent.properties["platform"].as_string()
     rows = db.query(
         UserEvent.user_id, UserEvent.name, event_day,
-        func.count(UserEvent.id), func.min(UserEvent.created_at),
+        func.count(UserEvent.id), func.min(UserEvent.created_at), platform,
     ).join(User, User.id == UserEvent.user_id).filter(
         *population, UserEvent.created_at >= since, UserEvent.created_at <= now,
         ((UserEvent.name.notin_(SERVER_EVENTS)) | (UserEvent.source == "server")),
         # Sandbox activations remain visible in /summary but never count as sales.
         ((UserEvent.name != "purchase_verified") |
          (UserEvent.properties["environment"].as_string() == "production")),
-    ).group_by(UserEvent.user_id, UserEvent.name, event_day).all()
+    ).group_by(UserEvent.user_id, UserEvent.name, event_day, platform).all()
     reached = defaultdict(set)
     cohort_reached = defaultdict(set)
     totals = defaultdict(int)
     activity_days = defaultdict(set)
-    for uid, name, day, count, first in rows:
+    purchase_users, purchase_events = defaultdict(set), defaultdict(int)
+    for uid, name, day, count, first, event_platform in rows:
         reached[name].add(uid)
         totals[name] += count
         if uid in cohort and utc(first) >= utc(cohort[uid]):
             cohort_reached[name].add(uid)
         if name in ACTIVITY:
             activity_days[uid].add(str(day))
+        if name == "purchase_verified":
+            provider = "stripe" if event_platform == "web" else "apple" if event_platform == "ios" else "unknown"
+            purchase_users[provider].add(uid)
+            purchase_events[provider] += count
     eligible = {uid for uid, created in cohort.items()
                 if utc(created).date() + timedelta(days=4) <= now.date()}
     retained = {uid for uid in eligible
@@ -75,6 +81,10 @@ def build_launch_report(db, *, days=30, now=None):
         "population": "Non-admin accounts excluding the configured App Review username",
         "stages": [{"name": name, "events": totals[name], "users": len(reached[name])}
                    for name in STAGES],
+        "verified_purchases_by_provider": [
+            {"provider": provider, "events": purchase_events[provider], "users": len(purchase_users[provider])}
+            for provider in ("apple", "stripe", "unknown")
+        ],
         "signup_cohort": {
             "users": len(cohort),
             "first_task": metric(len(cohort_reached["task_created"]), len(cohort)),
@@ -87,7 +97,7 @@ def build_launch_report(db, *, days=30, now=None):
             "Stages are independent reach counts, not an ordered conversion funnel.",
             "Day 3 is activity on signup UTC date + 3; only fully elapsed days are eligible.",
             "Server task milestones and verified purchases start at deployment; no backfill.",
-            "Purchases are production Apple activations, not revenue or net-new subscribers; Stripe is unmeasured.",
+            "Purchases are production Apple activations or first verified Stripe checkouts; not revenue or net-new subscribers.",
             "Installs and store impressions require separate App Store Connect figures.",
         ],
     }

@@ -60,7 +60,9 @@ An empty eligible cohort yields `percent: null`, not 0%. Sandbox activations sta
 in raw diagnostics but never count as production purchases in the launch report.
 An activation can be a renewal or newly observed restore, so it is not net-new
 subscriber count, revenue, or a purchase-conversion rate. Stripe fulfillment and
-verified events are not implemented; do not treat its checkout starts as sales.
+verified events are now implemented for tracked checkouts; follow
+`stripe_release.md` for configuration and real test-mode QA before using them.
+Do not treat checkout starts as sales.
 Installs, impressions, and store page conversion need separate App Store Connect
 figures. Pre-deployment users and old mobile builds have incomplete event coverage.
 

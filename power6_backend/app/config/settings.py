@@ -6,6 +6,7 @@ class Settings:
     STRIPE_SECRET_KEY: Optional[str] = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_PUBLISHABLE_KEY: Optional[str] = os.getenv("STRIPE_PUBLISHABLE_KEY")
     STRIPE_WEBHOOK_SECRET: Optional[str] = os.getenv("STRIPE_WEBHOOK_SECRET")
+    STRIPE_ENABLE_TEST_ENTITLEMENTS: bool = os.getenv("STRIPE_ENABLE_TEST_ENTITLEMENTS", "false").lower() == "true"
 
     # --- Stripe success/cancel redirects ---
     STRIPE_SUCCESS_URL: str = os.getenv("STRIPE_SUCCESS_URL", "https://power6-app.web.app/subscribe?success=1")

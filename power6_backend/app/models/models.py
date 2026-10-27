@@ -39,6 +39,7 @@ class User(Base):
     event_receipts = relationship("EventReceipt", back_populates="user", cascade="all, delete-orphan")
     apple_transactions = relationship("AppleIapTransaction", back_populates="user", cascade="all, delete-orphan")
     purchase_claims = relationship("ApplePurchaseClaim", back_populates="user", cascade="all, delete-orphan")
+    stripe_checkouts = relationship("StripeCheckout", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r}>"
@@ -174,3 +175,23 @@ class ApplePurchaseClaim(Base):
     transaction_id = Column(String(160), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user = relationship("User", back_populates="purchase_claims")
+
+
+class StripeCheckout(Base):
+    """Server-created checkout ownership and current verified entitlement state."""
+    __tablename__ = "stripe_checkouts"
+    session_id = Column(String(255), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tier = Column(String(20), nullable=False)
+    interval = Column(String(20), nullable=False)
+    price_id = Column(String(255), nullable=False)
+    livemode = Column(Boolean, nullable=False)
+    baseline_tier = Column(String(20), nullable=False)
+    entitlement_tier = Column(String(20), nullable=True)
+    subscription_id = Column(String(255), nullable=True, unique=True)
+    customer_id = Column(String(255), nullable=True)
+    subscription_row_id = Column(Integer, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True)
+    fulfilled = Column(Boolean, nullable=False, default=False)
+    active = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    user = relationship("User", back_populates="stripe_checkouts")
