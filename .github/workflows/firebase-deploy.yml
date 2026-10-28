@@ -39,6 +39,25 @@ jobs:
             "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
             > power6_mobile/build/web/deploy-version.json
 
+      - name: Identify Firebase deployment principal
+        env:
+          FIREBASE_DEPLOY_CREDENTIAL: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POWER6 }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+
+          # Report only the principal, never the credential or its private key.
+          try:
+              principal = json.loads(os.environ['FIREBASE_DEPLOY_CREDENTIAL'])['client_email']
+          except (KeyError, ValueError):
+              raise SystemExit('Firebase deployment credential has no valid client_email') from None
+          if not isinstance(principal, str) or not re.fullmatch(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.gserviceaccount\.com', principal):
+              raise SystemExit('Firebase deployment principal is not a service account email')
+          print(f'Firebase deployment principal: {principal}')
+          PY
+
       - name: Deploy to Firebase Hosting (live)
         id: firebase_deploy
         continue-on-error: true
