@@ -50,6 +50,9 @@ workflows:
       flutter: 3.41.7
       xcode: latest
       vars:
+        # Work around Xcode 26 altool failing to resolve the existing App Store app.
+        # This selects the uploader only; builds still use the current iOS SDK.
+        APP_STORE_CONNECT_ALTOOL_ADDITIONAL_ARGUMENTS: "--use-old-altool"
         BUNDLE_ID: "com.power6.app"   # <-- MUST match App Store Connect exactly
         DEVELOPMENT_TEAM: "97VTHZP969"
         XCODE_WORKSPACE: "Runner.xcworkspace"
