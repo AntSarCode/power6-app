@@ -40,6 +40,8 @@ class User(Base):
     apple_transactions = relationship("AppleIapTransaction", back_populates="user", cascade="all, delete-orphan")
     purchase_claims = relationship("ApplePurchaseClaim", back_populates="user", cascade="all, delete-orphan")
     stripe_checkouts = relationship("StripeCheckout", back_populates="user", cascade="all, delete-orphan")
+    apple_account = relationship("AppleAccountToken", back_populates="user", cascade="all, delete-orphan", uselist=False)
+    apple_chains = relationship("AppleSubscriptionClaim", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r}>"
@@ -175,6 +177,23 @@ class ApplePurchaseClaim(Base):
     transaction_id = Column(String(160), primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user = relationship("User", back_populates="purchase_claims")
+
+
+class AppleAccountToken(Base):
+    """Opaque StoreKit UUID; never expose an email or numeric user ID to Apple."""
+    __tablename__ = "apple_account_tokens"
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    token = Column(String(36), nullable=False, unique=True)
+    user = relationship("User", back_populates="apple_account")
+
+
+class AppleSubscriptionClaim(Base):
+    """Ownership across renewals; the environment is part of the chain identity."""
+    __tablename__ = "apple_subscription_claims"
+    chain_key = Column(String(160), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    subscription_row_id = Column(Integer, ForeignKey("subscriptions.id", ondelete="SET NULL"), nullable=True)
+    user = relationship("User", back_populates="apple_chains")
 
 
 class StripeCheckout(Base):

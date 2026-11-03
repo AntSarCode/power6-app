@@ -98,6 +98,7 @@ def build_launch_report(db, *, days=30, now=None):
             "Day 3 is activity on signup UTC date + 3; only fully elapsed days are eligible.",
             "Server task milestones and verified purchases start at deployment; no backfill.",
             "Purchases are production Apple activations or first verified Stripe checkouts; not revenue or net-new subscribers.",
+            "Apple chain deduplication starts with the account-binding deployment; earlier Apple activation counts may include renewals.",
             "Installs and store impressions require separate App Store Connect figures.",
         ],
     }

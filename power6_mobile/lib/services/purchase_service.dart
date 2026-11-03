@@ -41,9 +41,10 @@ class PurchaseService {
     return _iap.queryProductDetails(productIds);
   }
 
-  Future<bool> buy(ProductDetails product) {
+  Future<bool> buy(ProductDetails product, {required String appAccountToken}) {
     return _iap.buyNonConsumable(
-      purchaseParam: PurchaseParam(productDetails: product),
+      purchaseParam: PurchaseParam(
+          productDetails: product, applicationUserName: appAccountToken),
     );
   }
 

@@ -22,6 +22,7 @@ class ApiConstants {
   static const String deleteAccount = '/users/me';
   static const String updateTier = '/users/me/tier';
   static const String appleIapActivate = '/iap/apple/activate';
+  static const String appleAccountToken = '/iap/apple/account-token';
 
   static const String tasks = '/tasks/'; // POST + list
   static const String activeTasks = '/tasks/active';

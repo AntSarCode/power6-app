@@ -67,7 +67,7 @@ posted marketing, testimonials, or an App Store submission.
 
 - Deploy the backend after configuring Apple Server API credentials; validate a
   real sandbox purchase/restore and the existing free/Plus/Pro/Elite gates on a
-  physical iOS device. Build/release `0.1.4+21` with Codemagic/App Store Connect.
+  physical iOS device. Build/release `0.1.5+23` with Codemagic/App Store Connect.
 - Capture the first authenticated production snapshot and store-side impressions,
   installs, and screenshot/copy status; collect a second snapshot after mature
   day-three cohorts exist. Distinguish pre/post deployment and app versions.
@@ -75,8 +75,9 @@ posted marketing, testimonials, or an App Store submission.
   obtain explicit permission for sending messages or posting to external accounts.
 - Configure and test the new Stripe fulfillment path with Stripe test-mode
   fixtures before relying on non-iOS paid conversions. Follow `stripe_release.md`.
-- Add subscription lifecycle/revocation notifications and account-bound purchase
-  tokens; the activation report is not a full subscription/revenue ledger.
+- Add subscription lifecycle/revocation notifications and verified account recovery;
+  purchase tokens now bind new iOS checkouts, but the activation report is not a
+  full subscription/revenue ledger.
 - Prioritize the next UI/retention work from observed activation failures and
   feedback. Keep Elite team features positioned as future value and defer MCP/AI
   expansion and paid ads until the current release and measurement are proven.
@@ -121,3 +122,53 @@ This is a backend-only batch; mobile version remains `0.1.4+21`. No real payment
 test-mode provider request, marketing message, ad purchase, or store submission
 was performed. Next: real Stripe test-mode QA and production cohort evidence;
 Apple lifecycle/account-binding work remains pending.
+
+## 2026-11-03: ten Apple ownership and purchase-recovery passes
+
+Prior roadmap context still prioritizes reliable conversion and launch evidence
+over feature expansion. Auditing that path exposed a client fallback that displayed
+paid access after failed verification. This batch fixes it and implements the next
+account-binding priority. External metrics, payment QA and outreach remain pending.
+
+1. **Verified activation only:** remove all optimistic tier grants on rejected,
+   offline, malformed or timed-out activation; require a server profile for the
+   current account and a paid tier before updating mobile state.
+2. **Safe StoreKit completion:** acknowledge purchased/restored transactions only
+   after server activation, preserve retries after failure, and distinguish an
+   acknowledgement failure from an activation failure. Cancellation/pending/error
+   callbacks cannot acknowledge or grant a purchase.
+3. **Session and callback safety:** serialize purchase callbacks, bound verification
+   and acknowledgement waits, and discard late responses after logout, account
+   switch or screen disposal. Keep retry guidance visible.
+4. **Durable account identity:** add an authenticated, idempotent UUID endpoint and
+   dedicated account-token table without altering existing user columns.
+5. **StoreKit token handoff:** obtain the server UUID before purchase and pass it
+   through the plugin's account-token field; abort purchase preparation on missing
+   authentication, invalid token, network failure or account change.
+6. **Provider token enforcement:** validate Apple's returned UUID and reject another
+   account's token before creating ownership/entitlement rows. Client receipt
+   payloads cannot supply trusted token or original-transaction evidence.
+7. **Renewal-chain ownership:** claim environment/original transaction chains,
+   check historical owners, retain transaction claims and use account locks plus
+   unique constraints to prevent renewals from moving between accounts.
+8. **Atomic restores and measurement:** maintain one projection per chain, refresh
+   verified evidence on restore, retain higher existing/admin access, deduplicate
+   new-chain conversion events and avoid historical conversion backfill. Delete
+   new local ownership records with the account.
+9. **Provider and failure regressions:** bound receipt inputs, reject malformed
+   provider responses/IDs/dates and upgraded transactions, and add backend rollback,
+   renewal, token, deletion and simulated iOS callback tests.
+10. **Release handoff:** bump to `0.1.5+23`, document backend-first rollout and real
+    device QA, record measurement limitations and run the repository CI gates.
+
+The previous Firebase blocker is resolved externally: GitHub run `40645899242`,
+attempt 2, successfully deployed and verified `b7f79ac` on October 28. No IAM
+permissions were changed by this scheduled run. The Xcode uploader workaround
+remains. Physical-device purchase/restore QA, Apple credentials, authenticated
+production snapshots, provider notifications and verified account recovery remain
+external or subsequent work. See [apple_account_binding.md](apple_account_binding.md).
+
+Local checks: 82 backend tests and 23 Flutter tests passed; dependency validation,
+Flutter analysis (41 existing infos, no warnings/errors) and production web build
+passed. Provider purchases, iOS signing/upload and live cohort capture were not
+performed by this run.

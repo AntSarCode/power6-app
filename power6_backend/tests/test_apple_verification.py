@@ -40,6 +40,9 @@ def test_server_lookup_overrides_forged_client_payload(apple, monkeypatch):
     ({"bundleId": "wrong.app"}, 422), ({"transactionId": "9999"}, 422),
     ({"expiresDate": 1}, 402), ({"expiresDate": None}, 402),
     ({"revocationDate": 1}, 402), ({"environment": "unknown"}, 422),
+    ({"revocationDate": "invalid"}, 422), ({"appAccountToken": "wrong"}, 422),
+    ({"originalTransactionId": "../path"}, 422),
+    ({"isUpgraded": True}, 402),
 ])
 def test_invalid_server_entitlements_are_rejected(apple, monkeypatch, change, code):
     async def fetch(*args):
@@ -69,3 +72,29 @@ def test_missing_transaction_is_not_activated(apple, monkeypatch):
     with pytest.raises(HTTPException) as error:
         verify(apple)
     assert error.value.status_code == 404
+
+
+def test_provider_account_token_overrides_client_token(apple, monkeypatch):
+    from uuid import uuid4
+    provider_token = str(uuid4())
+    async def fetch(*args):
+        return _unsigned_jws({**apple, "appAccountToken": provider_token.upper()})
+    monkeypatch.setattr(service, "_fetch_transaction", fetch)
+    assert verify({**apple, "appAccountToken": str(uuid4())}).app_account_token == provider_token
+
+
+@pytest.mark.parametrize("body", [None, [], {}, {"signedTransactionInfo": 42},
+                                  {"signedTransactionInfo": "not-jws"}])
+def test_malformed_provider_response_returns_safe_502(monkeypatch, body):
+    import httpx
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, *args, **kwargs):
+            return httpx.Response(200, json=body)
+    monkeypatch.setattr(service.httpx, "AsyncClient", Client)
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service._fetch_transaction("1234", service.PRODUCTION_ENDPOINT, "private-token"))
+    assert error.value.status_code == 502
+    assert "private-token" not in error.value.detail

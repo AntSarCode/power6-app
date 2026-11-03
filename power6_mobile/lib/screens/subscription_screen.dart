@@ -14,14 +14,19 @@ import '../services/purchase_service.dart';
 import '../utils/access.dart';
 
 class SubscriptionScreen extends StatefulWidget {
-  const SubscriptionScreen({super.key});
+  const SubscriptionScreen({super.key, this.purchaseService, this.apiService});
+  final PurchaseService? purchaseService;
+  final ApiService? apiService;
 
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  final PurchaseService _purchaseService = PurchaseService();
+  late final PurchaseService _purchaseService;
+  late final ApiService _api;
+  int? _ownerUserId;
+  Future<void> _purchaseQueue = Future<void>.value();
   final AnalyticsService _analytics = AnalyticsService();
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   Timer? _storeOperationTimer;
@@ -36,6 +41,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
+    _purchaseService = widget.purchaseService ?? PurchaseService();
+    _api = widget.apiService ?? ApiService(ApiConstants.baseUrl);
+    _ownerUserId = context.read<AppState>().user?.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final app = context.read<AppState>();
@@ -47,7 +55,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
     if (_useAppleIap) {
       _purchaseSubscription = _purchaseService.purchaseStream.listen(
-        _handlePurchaseUpdates,
+        (purchases) {
+          _purchaseQueue =
+              _purchaseQueue.then((_) => _handlePurchaseUpdates(purchases));
+        },
         onError: (Object error) {
           if (!mounted) return;
           _finishStoreOperation();
@@ -66,6 +77,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _storeOperationTimer?.cancel();
     _purchaseSubscription?.cancel();
     _analytics.dispose();
+    if (widget.apiService == null) _api.dispose();
     super.dispose();
   }
 
@@ -166,6 +178,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
     for (final purchase in purchases) {
+      if (!mounted || context.read<AppState>().user?.id != _ownerUserId) return;
       if (purchase.status == PurchaseStatus.pending) {
         if (mounted) {
           setState(() => _loading = true);
@@ -177,14 +190,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         continue;
       }
 
-      if (purchase.status == PurchaseStatus.error) {
+      if (purchase.status == PurchaseStatus.error ||
+          purchase.status == PurchaseStatus.canceled) {
         if (mounted) {
           _finishStoreOperation();
           setState(() {
             _loading = false;
-            _error = purchase.error == null
-                ? 'Purchase failed.'
-                : _storeMessageFor(purchase.error!.message);
+            _error = purchase.status == PurchaseStatus.canceled
+                ? 'Purchase canceled.'
+                : purchase.error == null
+                    ? 'Purchase failed.'
+                    : _storeMessageFor(purchase.error!.message);
           });
         }
       }
@@ -192,42 +208,46 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       if (purchase.status == PurchaseStatus.purchased ||
           purchase.status == PurchaseStatus.restored) {
         try {
-          await _activateApplePurchase(purchase)
-              .timeout(const Duration(seconds: 8));
+          final activated = await _activateApplePurchase(purchase);
+          if (activated && purchase.pendingCompletePurchase) {
+            try {
+              await _purchaseService
+                  .completePurchase(purchase)
+                  .timeout(const Duration(seconds: 8));
+            } catch (_) {
+              if (mounted &&
+                  context.read<AppState>().user?.id == _ownerUserId) {
+                setState(() => _error =
+                    'Your plan is active. Please try Restore Purchases to finish confirming with the App Store.');
+              }
+            }
+          }
         } catch (_) {
-          final tier = PurchaseService.tierForProductId(purchase.productID);
-          if (tier != null) {
-            _markApplePurchaseActive(tier);
-          } else if (mounted) {
+          if (mounted && context.read<AppState>().user?.id == _ownerUserId) {
             _finishStoreOperation();
             setState(() {
               _loading = false;
-              _error = 'Could not activate purchase for this account.';
+              _error =
+                  'We could not verify this purchase yet. Your plan has not changed. Please try Restore Purchases.';
             });
           }
         }
       }
-
-      if (purchase.pendingCompletePurchase) {
-        await _purchaseService.completePurchase(purchase);
-      }
     }
   }
 
-  Future<void> _activateApplePurchase(PurchaseDetails purchase) async {
+  Future<bool> _activateApplePurchase(PurchaseDetails purchase) async {
     final productId = purchase.productID;
     final tier = PurchaseService.tierForProductId(productId);
-    final token = context.read<AppState>().accessToken ?? '';
+    final app = context.read<AppState>();
+    final token = app.accessToken ?? '';
+    final accountId = app.user?.id;
     if (tier == null || token.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'Could not activate purchase for this account.';
-      });
-      return;
+      throw StateError(
+          'Purchase requires a signed-in account and known product');
     }
 
-    final response = await ApiService(ApiConstants.baseUrl).post(
+    final response = await _api.post(
       ApiConstants.appleIapActivate,
       token: token,
       body: {
@@ -239,13 +259,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             purchase.verificationData.serverVerificationData,
         'source': 'ios_app_store',
       },
-    );
+    ).timeout(const Duration(seconds: 8));
 
-    if (!mounted) return;
+    if (!mounted || app.user?.id != accountId || app.accessToken != token) {
+      return false;
+    }
 
     if (response.isSuccess && response.data != null) {
+      final verifiedUser = User.fromJson(response.data!);
+      if (verifiedUser.id != accountId ||
+          !['plus', 'pro', 'elite', 'admin']
+              .contains(verifiedUser.tier?.toLowerCase())) {
+        throw StateError('Invalid verified account response');
+      }
       _finishStoreOperation();
-      context.read<AppState>().setUser(User.fromJson(response.data!));
+      app.setUser(verifiedUser);
       setState(() {
         _loading = false;
         _error = null;
@@ -254,27 +282,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         SnackBar(
             content: Text('Your ${tier.toUpperCase()} purchase is active.')),
       );
-      return;
+      return true;
     }
 
-    _markApplePurchaseActive(tier);
-  }
-
-  void _markApplePurchaseActive(String tier) {
-    if (!mounted) return;
-    _finishStoreOperation();
-    final app = context.read<AppState>();
-    final user = app.user;
-    if (user != null) {
-      app.setUser(user.copyWith(tier: tier));
-    }
-    setState(() {
-      _loading = false;
-      _error = null;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Your ${tier.toUpperCase()} purchase is active.')),
-    );
+    throw StateError('Purchase verification is pending');
   }
 
   Future<void> _startCheckout(
@@ -393,9 +404,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _startApplePurchase(String tier, String interval) async {
+    final app = context.read<AppState>();
     if (!_storeAvailable || _loadingProducts) {
       await _loadStoreProducts();
     }
+    if (!mounted || app.user?.id != _ownerUserId) return;
 
     final productId = PurchaseService.productIdFor(tier, interval);
     final product = _products[productId];
@@ -413,8 +426,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
     _startStoreOperationTimeout();
 
-    final started = await _purchaseService.buy(product);
-    if (!started && mounted) {
+    try {
+      final token = app.accessToken;
+      final accountId = app.user?.id;
+      if (token == null || accountId == null || accountId != _ownerUserId) {
+        throw StateError('Sign in before purchasing');
+      }
+      final response = await _api
+          .post(ApiConstants.appleAccountToken, token: token)
+          .timeout(const Duration(seconds: 8));
+      final accountToken = response.data?['app_account_token'];
+      if (!response.isSuccess ||
+          accountToken is! String ||
+          !RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+              .hasMatch(accountToken)) {
+        throw StateError('Could not prepare purchase');
+      }
+      if (!mounted || app.user?.id != accountId || app.accessToken != token) {
+        return;
+      }
+      final started =
+          await _purchaseService.buy(product, appAccountToken: accountToken);
+      if (!started) throw StateError('Purchase did not start');
+    } catch (_) {
+      if (!mounted) return;
       _finishStoreOperation();
       setState(() {
         _loading = false;

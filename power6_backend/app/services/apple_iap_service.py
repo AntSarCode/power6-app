@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from fastapi import HTTPException, status
@@ -30,6 +30,7 @@ class VerifiedAppleTransaction:
     revoked: bool
     revocation_date: datetime | None
     signed_transaction_info: str
+    app_account_token: str | None = None
 
 
 def _apple_private_key() -> str:
@@ -94,7 +95,7 @@ def _ms_to_datetime(value: Any) -> datetime | None:
         return None
     try:
         return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc)
-    except (TypeError, ValueError, OverflowError):
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
 
 
@@ -112,9 +113,12 @@ async def _fetch_transaction(transaction_id: str, endpoint: str, token: str) -> 
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Apple transaction verification failed.",
         )
-    body = response.json()
-    signed = body.get("signedTransactionInfo")
-    if not signed:
+    try:
+        body = response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="Apple returned invalid transaction information.") from None
+    signed = body.get("signedTransactionInfo") if isinstance(body, dict) else None
+    if not isinstance(signed, str) or len(signed) > 65536 or not _looks_like_jws(signed):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Apple did not return signed transaction information.",
@@ -142,7 +146,12 @@ def _verified_from_signed_transaction(
             detail="Apple transaction product ID does not match the requested product.",
         )
 
+    if data.get("isUpgraded") is True:
+        raise HTTPException(status_code=402, detail="Apple transaction was replaced by an upgrade. Restore the current purchase.")
+
     revocation_date = _ms_to_datetime(data.get("revocationDate"))
+    if data.get("revocationDate") is not None and revocation_date is None:
+        raise HTTPException(status_code=422, detail="Invalid Apple revocation date.")
     expiration_date = _ms_to_datetime(data.get("expiresDate"))
     if revocation_date is not None:
         raise HTTPException(
@@ -156,11 +165,21 @@ def _verified_from_signed_transaction(
         )
 
     verified_transaction_id = str(data.get("transactionId") or "")
-    if not verified_transaction_id:
+    if not re.fullmatch(r"[0-9]{1,128}", verified_transaction_id):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Apple transaction is missing a transaction ID.",
         )
+
+    original_id = data.get("originalTransactionId")
+    if original_id is not None and not re.fullmatch(r"[0-9]{1,128}", str(original_id)):
+        raise HTTPException(status_code=422, detail="Invalid Apple original transaction ID.")
+    account_token = data.get("appAccountToken")
+    if account_token is not None:
+        try:
+            account_token = str(UUID(account_token))
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(status_code=422, detail="Invalid Apple account token.") from None
 
     return VerifiedAppleTransaction(
         product_id=product_id,
@@ -176,6 +195,7 @@ def _verified_from_signed_transaction(
         revoked=revocation_date is not None,
         revocation_date=revocation_date,
         signed_transaction_info=signed_transaction_info,
+        app_account_token=account_token,
     )
 
 
