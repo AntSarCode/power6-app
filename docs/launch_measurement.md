@@ -82,6 +82,26 @@ denominator; do not infer a trend from two small cohorts or compare event totals
 as though they were sequential conversions. No production snapshot was available
 to this implementation run; no user or business results are asserted.
 
+For a release or outreach experiment, capture a fixed signup window. The start
+date is inclusive and the end date is exclusive, both at midnight UTC. Pick a
+completed window within the past 120 days. Repeat the same dates after enough
+time has passed for day 7 retention, or compare two disjoint windows of equal
+length. The `--days` flag still controls the rolling stage and purchase counts.
+
+```powershell
+python -m app.scripts.launch_snapshot --base-url https://power6-backend.onrender.com --cohort-start 2026-11-03 --cohort-end 2026-11-10 --output cohort-first.json
+# Repeat with the same dates and --output cohort-followup.json.
+python -m app.scripts.compare_launch_snapshots cohort-first.json cohort-followup.json
+```
+
+The comparison runs offline. It reports counts, eligible counts, and rates for
+each capture and shows percentage point changes for fully observed first 24-hour
+and day 1/3/7 metrics. Cumulative activation has different follow-up lengths, so
+its rate changes are left blank. Compare against your release and outreach
+records before interpreting a change. Account deletions and role changes can
+alter membership between captures, and small cohorts can move sharply with one
+user.
+
 ## Next organic experiments
 
 These are prepared drafts and operating hypotheses. No messages/posts have been

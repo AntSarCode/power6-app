@@ -172,3 +172,25 @@ Local checks: 82 backend tests and 23 Flutter tests passed; dependency validatio
 Flutter analysis (41 existing infos, no warnings/errors) and production web build
 passed. Provider purchases, iOS signing/upload and live cohort capture were not
 performed by this run.
+
+## 2026-11-10 — ten launch evidence passes
+
+The prior roadmap prioritizes learning where new users stop before expanding
+features or buying traffic. The first production readout requires administrator
+access and store-side figures. This batch makes that readout repeatable.
+
+1. Add fixed signup windows to the administrator launch report.
+2. Validate paired, completed UTC dates within the 120-day lookback.
+3. Separate rolling reach from cohort activity so captures keep both scopes clear.
+4. Filter pre-signup events before grouping, preserving valid actions on the same day.
+5. Measure first-24-hour planning and completion with a fully observed denominator.
+6. Add mature day 1 and day 7 retention alongside the existing day 3 metric.
+7. Extend snapshot capture with fixed dates, a response size limit, and window verification.
+8. Add an offline comparison for repeat captures or disjoint equal-length cohorts.
+9. Validate comparison counts and show rate changes only for fully observed horizons.
+10. Document the capture and comparison commands and test the boundary and maturity cases.
+
+Validation passed with 87 backend tests, dependency checks, 23 Flutter tests,
+and Flutter analysis with 41 existing informational findings. See the
+[measurement runbook](launch_measurement.md) for interpretation and capture.
+Production cohort capture, store figures, and device purchase QA remain pending.

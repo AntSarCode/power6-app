@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -83,11 +83,16 @@ def event_summary(
 @router.get("/launch")
 def launch_report(
     days: int = Query(30, ge=1, le=120),
+    cohort_start: date | None = None,
+    cohort_end: date | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _require_admin(current_user)
-    return build_launch_report(db, days=days)
+    try:
+        return build_launch_report(db, days=days, cohort_start=cohort_start, cohort_end=cohort_end)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.post("/", response_model=EventRead, status_code=status.HTTP_201_CREATED)

@@ -130,6 +130,42 @@ def test_launch_report_access_bounds_and_empty_denominators(client):
     assert response.json()["signup_cohort"]["day_3_retention"]["percent"] is None
 
 
+def test_fixed_cohort_uses_post_signup_evidence_and_mature_observation_windows(client):
+    now = datetime(2026, 10, 20, 15, tzinfo=timezone.utc)
+    created = now - timedelta(days=9)
+    with SessionLocal() as db:
+        member = user(db, created=created)
+        late = user(db, "late", created=created + timedelta(hours=8))
+        user(db, "outside", created=created + timedelta(days=1))
+        for event, when in (
+            ("task_created", created - timedelta(minutes=5)),
+            ("task_created", created + timedelta(minutes=5)),
+            ("task_completed", created + timedelta(hours=24)),
+            ("dashboard_viewed", created + timedelta(days=7)),
+        ):
+            record_event(db, member, event, now=when)
+        record_event(db, late, "dashboard_viewed", now=created + timedelta(hours=6))
+        db.commit()
+        report = build_launch_report(db, days=1, now=now, cohort_start=created.date(),
+                                     cohort_end=created.date() + timedelta(days=1))
+        cohort = report["signup_cohort"]
+        assert cohort["users"] == 2
+        assert cohort["first_task"]["users"] == 1
+        assert cohort["first_24_hours"]["first_task"]["users"] == 1
+        assert cohort["first_24_hours"]["first_completion"]["users"] == 0
+        assert cohort["day_1_retention"]["users"] == 1
+        assert cohort["day_7_retention"] == {"users": 1, "eligible_users": 2, "percent": 50.0}
+        assert all(row["events"] == 0 for row in report["stages"])
+
+
+def test_incomplete_fixed_date_parameters_are_rejected(client):
+    with SessionLocal() as db:
+        user(db, "admin", admin=True)
+        db.commit()
+    for query in ("cohort_start=2026-10-01", "cohort_start=2026-10-02&cohort_end=2026-10-01"):
+        assert client.get(f"/events/launch?{query}", headers=headers("admin")).status_code == 422
+
+
 def test_apple_activation_is_idempotent_and_owned(client, monkeypatch):
     from app.services.apple_iap_service import VerifiedAppleTransaction
     import app.routes.iap as route
